@@ -9,6 +9,8 @@ class AppColors {
   static const background = Color(0xFFE1D9CB);
   static const card = Color(0xFFF4EEE8);
   static const green = Color(0xFF7E8462);
+  static const greenSelected = Color(0xFF4C5039);
+  static const white = Color(0xFFF0ECE8);
 
   // textos -----
   static const textoSutil = Color.fromARGB(255, 178, 154, 137);
