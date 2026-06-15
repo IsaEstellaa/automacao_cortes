@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/constants/app_colors.dart';
-import '../cadastro/cadastro_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class CadastroScreen extends StatefulWidget {
+  const CadastroScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<CadastroScreen> createState() => CadastronScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class CadastronScreenState extends State<CadastroScreen> {
+  final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
+  final _confirmarSenhaController = TextEditingController();
 
   // controla se a senha está visível ou não
   bool _senhaVisivel = false;
+  bool _confirmarSenhaVisivel = false;
 
   @override
   void dispose() {
+    _nomeController.dispose();
     _emailController.dispose();
     _senhaController.dispose();
+    _confirmarSenhaController.dispose();
     super.dispose();
   }
 
@@ -44,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ============================================
-  // Card principal - login
+  // Card principal - cadastro
   // ============================================
 
   Widget _buildCard() {
@@ -67,39 +71,39 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _buildTitulo(),
-              const SizedBox(height: 52),
+              const SizedBox(height: 50),
+              _buildCampoNome(),
+              const SizedBox(height: 40),
               _buildCampoEmail(),
               const SizedBox(height: 40),
               _buildCampoSenha(),
-              const SizedBox(height: 8),
-              _buildEsqueceuSenha(),
-              const SizedBox(height: 26),
-              _buildBotaoEntrar(),
-              const SizedBox(height: 16),
-              _buildLinkCadastro(),
+              const SizedBox(height: 40),
+              _buildCampoConfirmarSenha(),
+              const SizedBox(height: 50),
+              _buildBotaoCadastrar(),
             ],
           ),
         ),
 
         Positioned(
           top: -27,
-          child: _buildDetalheVerde(),
+          child: _buildDetalheRosa(),
         ),
       ],
     );
   }
 
   // ============================================
-  // fitinha verde
+  // fitinha rosa
   // ============================================
-  Widget _buildDetalheVerde() {
+  Widget _buildDetalheRosa() {
     return Opacity(
       opacity: 0.70,
       child: Container(
         width: 105,
         height: 42,
         decoration: BoxDecoration(
-          color: AppColors.fundoFitaVerde,
+          color: AppColors.fundoFitaRosa,
         ),
         child: ClipRRect(
           child: CustomPaint(
@@ -117,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return ShaderMask(
       shaderCallback: (bounds) => AppColors.gradienteTitulo.createShader(bounds),
       child: Text(
-        'Entre com sua conta',
+        'Crie sua conta',
         textAlign: TextAlign.center,
         style: TextStyle(
           fontSize: 36,
@@ -126,6 +130,17 @@ class _LoginScreenState extends State<LoginScreen> {
           height: 1.3,
         ),
       ),
+    );
+  }
+
+  // ============================================
+  // campo de nome
+  // ============================================
+  Widget _buildCampoNome() {
+    return _campoBordaTracejada(
+      controller: _nomeController,
+      hint: 'Nome',
+      teclado: TextInputType.text,
     );
   }
 
@@ -156,6 +171,27 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         onPressed: () {
           setState(() => _senhaVisivel = !_senhaVisivel);
+        },
+      ),
+    );
+  }
+
+  // ============================================
+  // campo de confirmar senha
+  // ============================================
+  Widget _buildCampoConfirmarSenha() {
+    return _campoBordaTracejada(
+      controller: _confirmarSenhaController,
+      hint: 'Confirmar Senha',
+      obscure: !_confirmarSenhaVisivel,
+      sufixo: IconButton(
+        icon: Icon(
+          _confirmarSenhaVisivel ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          color: AppColors.green.withOpacity(0.6),
+          size: 20,
+        ),
+        onPressed: () {
+          setState(() => _confirmarSenhaVisivel = !_confirmarSenhaVisivel);
         },
       ),
     );
@@ -193,40 +229,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ============================================
-  // "esqueceu sua senha?"
-  // ============================================
-  Widget _buildEsqueceuSenha() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: TextButton(
-        onPressed: () {
-          // TODO: navegar para tela de recuperação de senha
-        },
-        style: TextButton.styleFrom(
-          padding: EdgeInsets.zero,
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Text(
-          'Esqueceu sua senha?',
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.textoSutil,
-            fontWeight: FontWeight.w400,
-            fontFamily: 'Roboto',
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ============================================
   // botão entrar
   // ============================================
-  Widget _buildBotaoEntrar() {
+  Widget _buildBotaoCadastrar() {
     return ElevatedButton(
         onPressed: () {
-          // TODO: chamar lógica de autenticação
+          // TODO: chamar lógica de criação de conta
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.buttonBrown,
@@ -243,40 +251,9 @@ class _LoginScreenState extends State<LoginScreen> {
           elevation: 2,
         ),
         child: const Text(
-          'Entrar',
+          'Finalizar',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       );
-  }
-
-  // ============================================
-  // link de cadastro
-  // ============================================
-  Widget _buildLinkCadastro() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const CadastroScreen(),
-          ),
-        );
-      },
-      child: RichText(
-        textAlign: TextAlign.center,
-        text: TextSpan(
-          style: TextStyle(fontSize: 13, color: AppColors.textoSutil),
-          children: [
-            const TextSpan(text: 'Não tem uma conta?\n'),
-            TextSpan(
-              text: 'Cadastre-se clicando aqui!',
-              style: const TextStyle(
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

@@ -21,6 +21,8 @@ class AppColors {
   // fitas -----
   static const fundoFitaVerde = Color(0xFFDFE2D4);
   static const listrasFitaVerde = Color.fromARGB(70, 32, 66, 31);
+  static const fundoFitaRosa = Color.fromRGBO(180, 149, 121, 0.39);
+  static const listrasFitaRosa = Color.fromARGB(115, 108, 66, 36);
 
   // tracejado
   static const tracejado = Color(0xFFB49579);
