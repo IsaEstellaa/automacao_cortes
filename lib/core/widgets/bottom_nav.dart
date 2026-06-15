@@ -36,15 +36,10 @@ class AppBottomNav extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => aoSelecionar(indice),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        child: Icon(
-          icone,
-          color: selecionado
-              ? AppColors.greenSelected
-              : AppColors.white,
-          size: 35,
-        ),
+      child: Icon(
+        icone,
+        color: selecionado ? AppColors.greenSelected : AppColors.white,
+        size: 35,
       ),
     );
   }

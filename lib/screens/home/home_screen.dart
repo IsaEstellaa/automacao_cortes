@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/bottom_nav.dart';
+import '../../core/widgets/titulo_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,18 +18,30 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTela() {
     switch (_indiceSelecionado) {
       case 0:
-        return _placeholder('Cortes');
+        return _buildPaginaComTitulo('Automação', _placeholder('Automação'));
       case 1:
-        return _placeholder('Peças');
+        return _buildPaginaComTitulo('Suas peças', _placeholder('Suas peças'));
       case 2:
         return _placeholder('Home');
       case 3:
-        return _placeholder('Notificações');
+        return _buildPaginaComTitulo('Notificações', _placeholder('Notificações'));
       case 4:
-        return _placeholder('Configurações');
+        return _buildPaginaComTitulo('Configurações', _placeholder('Configurações'));
       default:
         return _placeholder('Home');
     }
+  }
+
+  Widget _buildPaginaComTitulo(String titulo, Widget conteudo) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: TituloBanner(titulo: titulo),
+        ),
+        Expanded(child: conteudo),
+      ],
+    );
   }
 
   // tela temporária enquanto as outras não estão prontas - remover depois

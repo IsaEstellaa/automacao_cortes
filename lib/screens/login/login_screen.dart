@@ -103,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: ClipRRect(
           child: CustomPaint(
-            painter: ListrasPainter(),
+            painter: ListrasPainter(cor: AppColors.listrasFitaVerde),
           ),
         ),
       ),

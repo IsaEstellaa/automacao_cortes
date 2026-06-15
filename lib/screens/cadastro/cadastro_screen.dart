@@ -107,7 +107,7 @@ class CadastronScreenState extends State<CadastroScreen> {
         ),
         child: ClipRRect(
           child: CustomPaint(
-            painter: ListrasPainter(),
+            painter: ListrasPainter(cor: AppColors.listrasFitaRosa),
           ),
         ),
       ),

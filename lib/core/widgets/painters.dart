@@ -67,13 +67,22 @@ class BordaTracejadaPainter extends CustomPainter {
 // desenha as listras
 // ============================================
 class ListrasPainter extends CustomPainter {
+  final Color cor;
+  final double espessura;
+  final double espacamento;
+
+  ListrasPainter({
+    required this.cor,
+    this.espessura = 4,
+    this.espacamento = 13,
+  });
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.listrasFitaRosa
-      ..strokeWidth = 4;
+      ..color = cor
+      ..strokeWidth = espessura;
 
-    const espacamento = 13.0;
     for (double x = -size.height; x < size.width + size.height; x += espacamento) {
       canvas.drawLine(
         Offset(x, -2),
