@@ -106,10 +106,15 @@ class _HomeContentState extends State<HomeContent> {
         // TODO: navegar para tela de novo corte
       },
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(10),
+          topRight: Radius.circular(40),
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(10),
+        ),
         child: SizedBox(
           width: double.infinity,
-          height: 70,
+          height: 102,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -128,13 +133,16 @@ class _HomeContentState extends State<HomeContent> {
               ),
 
               // texto
-              Center(
-                child: Text(
-                  'Novo corte',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.green,
+              ShaderMask(
+                shaderCallback: (bounds) => AppColors.gradienteTitulo.createShader(bounds),
+                child: Center(
+                  child: Text(
+                    'Novo corte',
+                    style: TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
