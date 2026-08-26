@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/titulo_banner.dart';
+import 'home_content.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 1:
         return _buildPaginaComTitulo('Suas peças', _placeholder('Suas peças'));
       case 2:
-        return _placeholder('Home');
+        return const HomeContent();
       case 3:
         return _buildPaginaComTitulo('Notificações', _placeholder('Notificações'));
       case 4:
