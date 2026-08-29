@@ -147,6 +147,7 @@ class _HomeContentState extends State<HomeContent> {
           ),
 
           const SizedBox(height: 16),
+
           Center(child: 
             Icon(
               info['icone'],
@@ -154,6 +155,9 @@ class _HomeContentState extends State<HomeContent> {
               color: AppColors.textoPreto,
             ),
           ),
+
+          if (_statusAtual != StatusMaquina.naoEncontrada)
+            const SizedBox(height: 18),
 
           if (_statusAtual == StatusMaquina.naoEncontrada)
             Align(
