@@ -67,20 +67,31 @@ class CardNav extends StatelessWidget {
 
                     // texto por cima
                     Center(
-                      child: ShaderMask(
-                        shaderCallback: (bounds) => AppColors.gradienteTitulo.createShader(bounds),
-                        child: Text(
-                          titulo,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textoPreto,
-                          ),
+                      child: Text(
+                        titulo,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textoPreto,
                         ),
                       ),
                     ),
                   ],
                 ),
+              ),
+            ),
+
+            //sombra
+            Container(
+              height: 6,
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 5,
+                    offset: Offset(0, -1),
+                  ),
+                ],
               ),
             ),
 

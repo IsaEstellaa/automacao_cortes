@@ -26,6 +26,10 @@ class AppColors {
   static const listrasFitaVerde = Color.fromARGB(70, 32, 66, 31);
   static const fundoFitaRosa = Color.fromRGBO(180, 149, 121, 0.39);
   static const listrasFitaRosa = Color.fromARGB(115, 108, 66, 36);
+  static const fundoFitaAmarelo = Color.fromRGBO(237, 234, 202, 0.769);
+  static const listrasFitaAmarelo = Color.fromRGBO(118, 110, 45, 0.612);
+  static const fundoFitaVermelho = Color.fromRGBO(233, 201, 196, 0.814);
+  static const listrasFitaVermelho = Color.fromRGBO(121, 50, 34, 0.604);
 
   // tracejado
   static const tracejado = Color(0xFFB49579);

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
@@ -89,6 +90,54 @@ class ListrasPainter extends CustomPainter {
         Offset(x + size.height, size.height + 2),
         paint,
       );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ============================================
+// desenha o fundo com icones
+// ============================================
+
+class IconesFundoPainter extends CustomPainter {
+  final List<IconData> icones;
+  final Color cor;
+
+  IconesFundoPainter({required this.icones, required this.cor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = math.Random(42);
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    const colunas = 3.7;
+    const linhas = 2.6;
+    final larguraCelula = size.width / colunas;
+    final alturaCelula = size.height / linhas;
+
+    for (int linha = 0; linha < linhas; linha++) {
+      for (int coluna = 0; coluna < colunas; coluna++) {
+        final icone = icones[random.nextInt(icones.length)];
+        const tamanho = 30.0;
+
+        final x = (coluna * larguraCelula) + (larguraCelula / 2) + (random.nextDouble() - 1) * 10;
+        final y = (linha * alturaCelula) + (alturaCelula / 2) + (random.nextDouble() - 1) * 10;
+
+        textPainter.text = TextSpan(
+          text: String.fromCharCode(icone.codePoint),
+          style: TextStyle(
+            fontSize: tamanho,
+            fontFamily: icone.fontFamily,
+            package: icone.fontPackage,
+            color: cor,
+          ),
+        );
+
+        textPainter.layout();
+        textPainter.paint(canvas, Offset(x - tamanho / 2, y - tamanho / 2));
+      }
     }
   }
 

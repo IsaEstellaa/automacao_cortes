@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/widgets/card_nav.dart';
@@ -23,23 +22,29 @@ class _HomeContentState extends State<HomeContent> {
   // trocar aqui para simular os estados
   StatusMaquina _statusAtual = StatusMaquina.aguardando;
 
-  // retorna as informações de cada estado
+  // mapeamento dos estados da maquina
   Map<String, dynamic> _infoStatus() {
     switch (_statusAtual) {
       case StatusMaquina.aguardando:
         return {
           'texto': 'A máquina está aguardando\num novo corte',
           'icone': Icons.settings_outlined,
+          'corListras': AppColors.listrasFitaVerde,
+          'corFundo': AppColors.fundoFitaVerde,
         };
       case StatusMaquina.trabalhando:
         return {
-          'texto': 'A máquina está\ntrabalhando',
+          'texto': 'A máquina está em processo\nde corte',
           'icone': Icons.precision_manufacturing_outlined,
+          'corListras': AppColors.listrasFitaAmarelo,
+          'corFundo': AppColors.fundoFitaAmarelo,
         };
       case StatusMaquina.naoEncontrada:
         return {
-          'texto': 'Máquina não\nencontrada',
-          'icone': Icons.wifi_off_outlined,
+          'texto': 'A máquina não foi\nencontrada',
+          'icone': Icons.highlight_off,
+          'corListras': AppColors.listrasFitaVermelho,
+          'corFundo': AppColors.fundoFitaVermelho,
         };
     }
   }
@@ -68,30 +73,87 @@ class _HomeContentState extends State<HomeContent> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(60),
+          topRight: Radius.circular(10),
+          bottomLeft: Radius.circular(10),
+          bottomRight: Radius.circular(60),
+        ),
         border: Border.all(color: AppColors.bordaMarrom, width: 1),
+        boxShadow: AppColors.sombra,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            info['texto'],
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.green,
-              height: 1.4,
+          // título com listras
+          ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(60),
+              topRight: Radius.circular(10),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 85,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // listras
+                  CustomPaint(
+                    painter: ListrasPainter(
+                      cor: (info['corListras'] as Color).withOpacity(0.60),
+                      espessura: 5,
+                      espacamento: 35,
+                    ),
+                  ),
+
+                  // fundo semi-transparente
+                  Container(
+                    color: (info['corFundo'] as Color).withOpacity(0.80),
+                  ),
+
+                  // texto por cima
+                  Center(
+                    child: Text(
+                      info['texto'],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textoPreto,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // sombra
+          Container(
+            height: 6,
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 8,
+                  offset: Offset(0, 0),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          Center(child: 
+            Icon(
+              info['icone'],
+              size: 75,
+              color: AppColors.textoPreto,
             ),
           ),
           const SizedBox(height: 16),
-          Icon(
-            info['icone'],
-            size: 64,
-            color: AppColors.green,
-          ),
         ],
       ),
     );
@@ -118,12 +180,18 @@ class _HomeContentState extends State<HomeContent> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // listras de fundo
+              // ícones aleatórios
               CustomPaint(
-                painter: ListrasPainter(
-                  cor: AppColors.buttonBrown.withOpacity(0.4),
-                  espessura: 10,
-                  espacamento: 22,
+                painter: IconesFundoPainter(
+                  icones: [
+                    Icons.tips_and_updates,
+                    Icons.content_cut,
+                    Icons.auto_awesome,
+                    Icons.straighten,
+                    Icons.color_lens,
+                    Icons.precision_manufacturing,
+                  ],
+                  cor: AppColors.green.withOpacity(0.50),
                 ),
               ),
 
