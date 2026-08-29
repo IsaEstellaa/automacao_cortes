@@ -15,6 +15,7 @@ class AppColors {
   // textos -----
   static const textoSutil = Color.fromARGB(255, 178, 154, 137);
   static const textoPreto = Color(0xFF2B2B2B);
+  static const textoMarrom = Color(0xFF744E32);
 
 
   // botoes -----

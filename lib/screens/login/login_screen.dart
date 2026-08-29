@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/constants/app_colors.dart';
 import '../cadastro/cadastro_screen.dart';
+import '../../core/widgets/fita_decorativa.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -83,30 +84,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
         Positioned(
           top: -27,
-          child: _buildDetalheVerde(),
-        ),
-      ],
-    );
-  }
-
-  // ============================================
-  // fitinha verde
-  // ============================================
-  Widget _buildDetalheVerde() {
-    return Opacity(
-      opacity: 0.70,
-      child: Container(
-        width: 105,
-        height: 42,
-        decoration: BoxDecoration(
-          color: AppColors.fundoFitaVerde,
-        ),
-        child: ClipRRect(
-          child: CustomPaint(
-            painter: ListrasPainter(cor: AppColors.listrasFitaVerde),
+          child: FitaDecorativa(
+            corFundo: AppColors.fundoFitaVerde,
+            corListras: AppColors.listrasFitaVerde,
           ),
         ),
-      ),
+      ],
     );
   }
 

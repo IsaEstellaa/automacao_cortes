@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/widgets/card_nav.dart';
+import '../../core/widgets/fita_decorativa.dart';
 
 // enum com os possíveis estados da máquina
 // quando integrar com IoT, só muda o valor do _statusAtual
@@ -20,7 +21,7 @@ class HomeContent extends StatefulWidget {
 
 class _HomeContentState extends State<HomeContent> {
   // trocar aqui para simular os estados
-  StatusMaquina _statusAtual = StatusMaquina.aguardando;
+  StatusMaquina _statusAtual = StatusMaquina.naoEncontrada;
 
   // mapeamento dos estados da maquina
   Map<String, dynamic> _infoStatus() {
@@ -153,7 +154,19 @@ class _HomeContentState extends State<HomeContent> {
               color: AppColors.textoPreto,
             ),
           ),
-          const SizedBox(height: 16),
+
+          if (_statusAtual == StatusMaquina.naoEncontrada)
+            Align(
+              alignment: Alignment.bottomLeft,
+              child: IconButton(
+                onPressed: () => _mostrarModalAjuda(context),
+                icon: Icon(
+                  Icons.help_outline,
+                  color: AppColors.green,
+                  size: 28,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -272,3 +285,160 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 }
+
+void _mostrarModalAjuda(BuildContext context) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black.withOpacity(0.5),
+    builder: (_) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: AppColors.card,
+      clipBehavior: Clip.none, // 👈 permite a fita "vazar" pra fora
+      child: Stack(
+        clipBehavior: Clip.none, // 👈 aqui também
+        alignment: Alignment.topCenter,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text('⚠️', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 8),
+                    ShaderMask(
+                      shaderCallback: (bounds) => AppColors.gradienteTitulo.createShader(bounds),
+                      child: Center(
+                        child: Text(
+                          'Máquina indisponível',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Possíveis causas:',
+                    style: TextStyle(fontSize: 15, color: AppColors.textoPreto),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _itemCausa('Máquina desligada'),
+                _itemCausa('Sem conexão com a internet'),
+                _itemCausa('Rede instável'),
+                _itemCausa('Cabo desconectado'),
+                const SizedBox(height: 12),
+
+                Text(
+                  'A conexão pode levar alguns segundos para ser restabelecida.',
+                  style: TextStyle(fontSize: 15, color: AppColors.textoPreto),
+                ),
+                const SizedBox(height: 20),
+
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(6),
+                        topRight: Radius.circular(20),
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(6),
+                      ),
+                    ),
+                  ),
+                  child: const Text(
+                    'Entendido',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          Positioned(
+            top: -25,
+            child: FitaDecorativa(
+              corFundo: AppColors.fundoFitaRosa,
+              corListras: AppColors.listrasFitaRosa,
+            ),
+          ),
+        ]
+      )
+    ),
+  );
+}
+
+Widget _itemCausa(String texto) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      children: [
+        Text('•  ', style: TextStyle(color: AppColors.textoMarrom, fontSize: 15)),
+        Text(texto, style: TextStyle(color: AppColors.textoMarrom, fontSize: 15)),
+      ],
+    ),
+  );
+}
+
+// void _mostrarModalAjuda(BuildContext context) {
+//   showModalBottomSheet(
+//     context: context,
+//     shape: RoundedRectangleBorder(
+//       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+//     ),
+//     backgroundColor: AppColors.card,
+//     builder: (_) => Padding(
+//       padding: const EdgeInsets.all(24),
+//       child: Column(
+//         mainAxisSize: MainAxisSize.min, // ocupa só o necessário
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(
+//             'O que pode ter acontecido?',
+//             style: TextStyle(
+//               fontSize: 18,
+//               fontWeight: FontWeight.bold,
+//               color: AppColors.green,
+//             ),
+//           ),
+//           const SizedBox(height: 16),
+//           _itemModal(Icons.wifi_off_outlined, 'Verifique sua conexão com a internet'),
+//           _itemModal(Icons.power_off_outlined, 'Verifique se a máquina está ligada'),
+//           _itemModal(Icons.bluetooth_disabled_outlined, 'Verifique se o bluetooth está ativo'),
+//           const SizedBox(height: 8),
+//         ],
+//       ),
+//     ),
+//   );
+// }
+
+// Widget _itemModal(IconData icone, String texto) {
+//   return Padding(
+//     padding: const EdgeInsets.symmetric(vertical: 8),
+//     child: Row(
+//       children: [
+//         Icon(icone, color: AppColors.green, size: 24),
+//         const SizedBox(width: 12),
+//         Expanded(
+//           child: Text(
+//             texto,
+//             style: TextStyle(fontSize: 15, color: AppColors.green),
+//           ),
+//         ),
+//       ],
+//     ),
+//   );
+// }

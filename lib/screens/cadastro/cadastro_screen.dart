@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/widgets/fita_decorativa.dart';
 
 class CadastroScreen extends StatefulWidget {
   const CadastroScreen({super.key});
@@ -87,30 +88,12 @@ class CadastronScreenState extends State<CadastroScreen> {
 
         Positioned(
           top: -27,
-          child: _buildDetalheRosa(),
+          child: FitaDecorativa(
+            corFundo: AppColors.fundoFitaRosa,
+            corListras: AppColors.listrasFitaRosa,
+          )
         ),
       ],
-    );
-  }
-
-  // ============================================
-  // fitinha rosa
-  // ============================================
-  Widget _buildDetalheRosa() {
-    return Opacity(
-      opacity: 0.70,
-      child: Container(
-        width: 105,
-        height: 42,
-        decoration: BoxDecoration(
-          color: AppColors.fundoFitaRosa,
-        ),
-        child: ClipRRect(
-          child: CustomPaint(
-            painter: ListrasPainter(cor: AppColors.listrasFitaRosa),
-          ),
-        ),
-      ),
     );
   }
 
