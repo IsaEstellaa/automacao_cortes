@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/fita_decorativa.dart';
+import 'boas_vindas_screen.dart';
 
 class CadastroScreen extends StatefulWidget {
   const CadastroScreen({super.key});
@@ -218,6 +219,12 @@ class CadastronScreenState extends State<CadastroScreen> {
     return ElevatedButton(
         onPressed: () {
           // TODO: chamar lógica de criação de conta
+
+          // por enquanto, somente direcionando ao modal de boas vindas
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BoasVindasScreen()),
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.buttonBrown,

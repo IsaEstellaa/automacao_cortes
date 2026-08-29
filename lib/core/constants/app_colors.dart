@@ -17,7 +17,6 @@ class AppColors {
   static const textoPreto = Color(0xFF2B2B2B);
   static const textoMarrom = Color(0xFF744E32);
 
-
   // botoes -----
 
   static const buttonBrown = Color(0xFF987A64);
