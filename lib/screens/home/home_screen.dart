@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/titulo_banner.dart';
+import '../notificacoes/notificacoes_content.dart';
 import 'home_content.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return const HomeContent();
       case 3:
-        return _buildPaginaComTitulo('Notificações', _placeholder('Notificações'));
+        return _buildPaginaComTitulo('Notificações', const NotificacoesContent());
       case 4:
         return _buildPaginaComTitulo('Configurações', _placeholder('Configurações'));
       default:
