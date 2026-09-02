@@ -98,18 +98,20 @@ class ConfiguracoesContent extends StatelessWidget {
                     'Isabella Estella', // TODO: passar nome real do usuário
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                       height: 1.3,
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 Text(
                   'Lorem ipsum dolor sit its panamet, consectetur adipiscing elit. Mauris pellentesque. Suspendisse id cursus massa, blandit consectetur una.', // TODO: bio real
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     color: AppColors.textoPreto,
                     height: 1.4,
                   ),
@@ -161,12 +163,12 @@ class ConfiguracoesContent extends StatelessWidget {
         ),
         child: Row(
           children: [
-          // título com listras
+            // título com listras
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: SizedBox(
-                width: 43,
-                height: 43,
+                width: 50,
+                height: 50,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -183,7 +185,7 @@ class ConfiguracoesContent extends StatelessWidget {
                     ),
 
                     Center(
-                      child: Icon(icone, color: AppColors.textoPreto, size: 22),
+                      child: Icon(icone, color: AppColors.greenSelected, size: 26),
                     ),
                   ],
                 ),
@@ -195,7 +197,7 @@ class ConfiguracoesContent extends StatelessWidget {
             Text(
               titulo,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textoPreto,
               ),

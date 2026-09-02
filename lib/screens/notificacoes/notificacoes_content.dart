@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/widgets/painters.dart';
 
 // icone da notificacao
 enum TipoNotificacao {
@@ -82,7 +83,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
       duration: const Duration(milliseconds: 300),
       opacity: visto ? 0.45 : 1.0,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.only(
@@ -96,24 +97,43 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
         ),
         child: Row(
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(5),
-                  bottomLeft: Radius.circular(5),
-                  bottomRight: Radius.circular(7),
+            ClipRRect(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(5),
+                bottomLeft: Radius.circular(5),
+                bottomRight: Radius.circular(7),
+              ),
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      color: AppColors.fundoFitaRosa.withOpacity(0.20),
+                    ),
+
+                    CustomPaint(
+                      painter: ListrasPainter(
+                        cor: AppColors.listrasFitaRosa.withOpacity(0.15),
+                        espessura: 5,
+                        espacamento: 18,
+                      ),
+                    ),
+
+                    Center(
+                      child: Icon(
+                        _iconeDoTipo(notificacao.tipo),
+                        color: AppColors.greenSelected,
+                        size: 26,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Icon(
-                _iconeDoTipo(notificacao.tipo),
-                color: AppColors.green,
-                size: 26,
-              ),
             ),
+
             const SizedBox(width: 12),
 
             // título e descrição
@@ -133,7 +153,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
                   Text(
                     notificacao.descricao,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       color: AppColors.textoPreto,
                     ),
                   ),
