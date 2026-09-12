@@ -5,6 +5,7 @@ import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/titulo_banner.dart';
 import '../notificacoes/notificacoes_content.dart';
 import '../configuracoes/configuracoes_content.dart';
+import '../automacao/automacao_content.dart';
 import 'home_content.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -21,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTela() {
     switch (_indiceSelecionado) {
       case 0:
-        return _buildPaginaComTitulo('Automação', _placeholder('Automação'));
+        return _buildPaginaComTitulo('Automação', const AutomacaoContent());
       case 1:
         return _buildPaginaComTitulo('Suas peças', _placeholder('Suas peças'));
       case 2:

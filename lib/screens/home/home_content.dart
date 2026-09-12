@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/widgets/card_nav.dart';
 import '../../core/widgets/fita_decorativa.dart';
+import '../../core/widgets/botao_novo_corte.dart';
 
 // enum com os possíveis estados da máquina
 // quando integrar com IoT, só muda o valor do _statusAtual
@@ -58,7 +59,11 @@ class _HomeContentState extends State<HomeContent> {
         children: [
           _buildCardStatus(),
           const SizedBox(height: 16),
-          _buildBotaoNovoCorte(),
+          BotaoNovoCorte(
+            aoTocar: () {
+              // TODO: navegar para tela de novo corte
+            },
+          ),
           const SizedBox(height: 16),
           _buildGrid(),
         ],
@@ -172,68 +177,6 @@ class _HomeContentState extends State<HomeContent> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  // ============================================
-  // botão "Novo corte" com listras
-  // ============================================
-  Widget _buildBotaoNovoCorte() {
-    return GestureDetector(
-      onTap: () {
-        // TODO: navegar para tela de novo corte
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(10),
-          topRight: Radius.circular(40),
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(10),
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 102,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // ícones aleatórios
-              CustomPaint(
-                painter: IconesFundoPainter(
-                  icones: [
-                    Icons.tips_and_updates,
-                    Icons.content_cut,
-                    Icons.auto_awesome,
-                    Icons.straighten,
-                    Icons.color_lens,
-                    Icons.precision_manufacturing,
-                  ],
-                  cor: AppColors.green.withOpacity(0.50),
-                ),
-              ),
-
-              // fundo semi-transparente
-              Container(
-                color: AppColors.buttonBrown.withOpacity(0.75),
-              ),
-
-              // texto
-              ShaderMask(
-                shaderCallback: (bounds) => AppColors.gradienteTitulo.createShader(bounds),
-                child: Center(
-                  child: Text(
-                    'Novo corte',
-                    style: TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
