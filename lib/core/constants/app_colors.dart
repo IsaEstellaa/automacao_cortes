@@ -20,6 +20,8 @@ class AppColors {
   // botoes -----
 
   static const buttonBrown = Color(0xFF987A64);
+  static const buttonRed = Color.fromARGB(184, 173, 73, 62);
+  static const buttonGreen = Color(0xFF7E8462);
 
   // fitas -----
   static const fundoFitaVerde = Color(0xFFDFE2D4);

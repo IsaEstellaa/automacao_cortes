@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/titulo_banner.dart';
+import '../../core/widgets/modal_confirmacao.dart';
 import 'pecas_content.dart';
 
 class PecaDetalhesScreen extends StatefulWidget {
@@ -26,6 +27,14 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.green,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Column(
         children: [
           // aind nao sei se vou usar o AppHeader aqui, mas vou deixar comentado por enquanto
@@ -49,6 +58,10 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
 
                   // cortes da peça
                   _buildCortes(),
+                  const SizedBox(height: 24),
+
+                  _buildBotoes(),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -163,14 +176,6 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
                 ),
               ),
               const Spacer(),
-              // botão editar
-              GestureDetector(
-                onTap: () {
-                  // TODO: navegar para tela de edição
-                },
-                child: Icon(Icons.edit_outlined,
-                    size: 18, color: AppColors.green.withOpacity(0.6)),
-              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -249,6 +254,73 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
                 ),
         ],
       ),
+    );
+  }
+
+  // ============================================
+  // botoes
+  // ============================================
+  Widget _buildBotoes() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // TODO: navegar para tela de edição
+            },
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Editar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.buttonGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(30),
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () => _mostrarModalExclusao(),
+            icon: const Icon(Icons.delete_outline, size: 18),
+            label: const Text('Excluir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.buttonRed,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(30),
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _mostrarModalExclusao() {
+    ModalConfirmacao.mostrar(
+      context,
+      titulo: 'Excluir peça',
+      mensagem: 'Tem certeza que deseja excluir "${widget.peca.nome}"? Essa ação não poderá ser desfeita.',
+      textoBotaoConfirmar: 'Excluir',
+      aoConfirmar: () {
+        // TODO: chamar API para excluir
+        Navigator.pop(context); // volta para lista de peças
+      },
+      corBotao: AppColors.buttonRed,
     );
   }
 }
