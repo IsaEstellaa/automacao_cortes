@@ -6,6 +6,7 @@ import '../../core/widgets/titulo_banner.dart';
 import '../notificacoes/notificacoes_content.dart';
 import '../configuracoes/configuracoes_content.dart';
 import '../automacao/automacao_content.dart';
+import '../pecas/pecas_content.dart';
 import 'home_content.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _buildPaginaComTitulo('Automação', const AutomacaoContent());
       case 1:
-        return _buildPaginaComTitulo('Suas peças', _placeholder('Suas peças'));
+        return _buildPaginaComTitulo('Suas peças', const PecasContent());
       case 2:
         return const HomeContent();
       case 3:

@@ -4,10 +4,12 @@ import './painters.dart';
 
 class BotaoNovoCorte extends StatelessWidget {
   final VoidCallback aoTocar;
+  final String texto;
 
   const BotaoNovoCorte({
     super.key,
     required this.aoTocar,
+    this.texto = 'Novo corte',
   });
 
   @override
@@ -52,7 +54,7 @@ class BotaoNovoCorte extends StatelessWidget {
                 shaderCallback: (bounds) => AppColors.gradienteTitulo.createShader(bounds),
                 child: Center(
                   child: Text(
-                    'Novo corte',
+                    texto,
                     style: TextStyle(
                       fontSize: 25,
                       fontWeight: FontWeight.bold,
