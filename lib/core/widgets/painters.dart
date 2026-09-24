@@ -36,7 +36,8 @@ class BordaTracejadaPainter extends CustomPainter {
 
     final paint = Paint()
       ..color = AppColors.tracejado
-      ..strokeWidth = 2
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
     _drawDashedRRect(canvas, rect, paint);

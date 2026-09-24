@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/botao_novo_corte.dart';
 import 'peca_card.dart';
 import 'peca_detalhes_screen.dart';
+import 'nova_peca_screen.dart';
 
 // ============================================
 // modelo de peça (vai vir do backend)
@@ -71,9 +72,10 @@ class _PecasContentState extends State<PecasContent> {
 
               BotaoNovoCorte(
                 texto: 'Nova peça',
-                aoTocar: () {
-                  // TODO: navegar para tela de nova peça
-                },
+                aoTocar: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NovaPecaScreen()),
+                ),
               ),
               const SizedBox(height: 16),
 
