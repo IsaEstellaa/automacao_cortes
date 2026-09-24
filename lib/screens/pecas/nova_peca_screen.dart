@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/titulo_banner.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import '../../core/widgets/painters.dart';
+import 'pecas_content.dart';
 
 // modelo de corte do formulário
 class CorteFormulario {
@@ -20,7 +21,12 @@ class CorteFormulario {
 }
 
 class NovaPecaScreen extends StatefulWidget {
-  const NovaPecaScreen({super.key});
+  final Peca? pecaParaEditar;
+
+  const NovaPecaScreen({
+    super.key,
+    this.pecaParaEditar,
+  });
 
   @override
   State<NovaPecaScreen> createState() => _NovaPecaScreenState();
@@ -35,6 +41,32 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
 
   // lista de cortes do formulário — começa com um vazio
   final List<CorteFormulario> _cortes = [CorteFormulario()];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // se for edição, preenche os campos com os dados da peça
+    if (widget.pecaParaEditar != null) {
+      _nomeController.text = widget.pecaParaEditar!.nome;
+      _descricaoController.text = widget.pecaParaEditar!.descricao;
+      
+      // testar isso com o back pois no front da erro de compilação, mas a ideia é preencher as fotos e cortes com os dados da peça que está sendo editada
+      // preenche as fotos
+      // _fotos.addAll(widget.pecaParaEditar!.fotos);
+
+      // // preenche os cortes — substitui o corte vazio inicial
+      // if (widget.pecaParaEditar!.cortes.isNotEmpty) {
+      //   _cortes.clear();
+      //   for (final corte in widget.pecaParaEditar!.cortes) {
+      //     final c = CorteFormulario();
+      //     c.quantidade.text = corte['quantidade'].toString();
+      //     c.metragem.text = corte['metragem'].toString();
+      //     _cortes.add(c);
+      //   }
+      // }
+    }
+  }
 
   @override
   void dispose() {
@@ -67,7 +99,9 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Column(
           children: [
-            TituloBanner(titulo: 'Nova peça'),
+            TituloBanner(
+              titulo: widget.pecaParaEditar != null ? 'Editar peça' : 'Nova peça',
+            ),
             const SizedBox(height: 20),
             _buildSecaoInfos(),
             const SizedBox(height: 16),
@@ -409,9 +443,9 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
             ),
           ),
         ),
-        child: const Text(
-          'Salvar peça',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        child: Text(
+          widget.pecaParaEditar != null ? 'Salvar alterações' : 'Salvar peça',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );

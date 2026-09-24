@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/titulo_banner.dart';
 import '../../core/widgets/modal_confirmacao.dart';
+import 'nova_peca_screen.dart';
 import 'pecas_content.dart';
 
 class PecaDetalhesScreen extends StatefulWidget {
@@ -266,7 +267,12 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () {
-              // TODO: navegar para tela de edição
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NovaPecaScreen(pecaParaEditar: widget.peca), // 👈 passa a peça
+                ),
+              );
             },
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('Editar'),

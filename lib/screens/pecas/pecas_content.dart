@@ -14,6 +14,7 @@ class Peca {
   final String descricao;
   final List<String> fotos; // URLs das fotos
   bool favorito;
+  final List<Map<String, dynamic>> cortes;
 
   Peca({
     required this.id,
@@ -21,6 +22,7 @@ class Peca {
     required this.descricao,
     required this.fotos,
     this.favorito = false,
+    this.cortes = const [],
   });
 }
 
