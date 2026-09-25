@@ -18,12 +18,6 @@ class PecaDetalhesScreen extends StatefulWidget {
 class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
   int _fotoAtual = 0;
 
-  // cortes mockados — substituir pelo backend
-  final List<Map<String, dynamic>> _cortes = [
-    {'quantidade': 10, 'metragem': 500, 'situacao': 'A'},
-    {'quantidade': 5, 'metragem': 200, 'situacao': 'A'},
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -220,13 +214,13 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
           ),
           const SizedBox(height: 12),
 
-          _cortes.isEmpty
+          widget.peca.cortes.isEmpty
               ? Text(
                   'Nenhum corte cadastrado',
                   style: TextStyle(fontSize: 13, color: AppColors.green.withOpacity(0.5)),
                 )
               : Column(
-                  children: _cortes.map((corte) {
+                  children: widget.peca.cortes.map((corte) {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),

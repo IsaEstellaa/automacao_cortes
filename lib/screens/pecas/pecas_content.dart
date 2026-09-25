@@ -43,9 +43,43 @@ class _PecasContentState extends State<PecasContent> {
 
   // dados mockados
   final List<Peca> _pecas = [
-    Peca(id: 1, nome: 'Bolsa', descricao: 'Bolsa de macramê com alças longas.', fotos: [], favorito: true),
-    Peca(id: 2, nome: 'Painel', descricao: 'Painel decorativo para sala.', fotos: []),
-    Peca(id: 3, nome: 'Suporte', descricao: 'Suporte para vasos.', fotos: []),
+    Peca(id: 1, nome: 'Bolsa', descricao: 'Bolsa de macramê com alças longas.', fotos: ['https://images.unsplash.com/photo-1523381210434-271e8be1f52b', 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b'], favorito: true,
+        cortes: [
+        {
+          'quantidade': 45,
+          'metragem': 250,
+          'situacao': 'A'
+        },
+        {
+          'quantidade': 10,
+          'metragem': 180,
+          'situacao': 'A'
+        },
+      ],
+    ),
+    Peca(id: 2, nome: 'Painel', descricao: 'Painel decorativo para sala.', fotos: [],
+        cortes: [
+        {
+          'quantidade': 30,
+          'metragem': 200,
+          'situacao': 'A'
+        },
+        {
+          'quantidade': 15,
+          'metragem': 150,
+          'situacao': 'A'
+        },
+      ],
+    ),
+    Peca(id: 3, nome: 'Suporte', descricao: 'Suporte para vasos.', fotos: [],
+        cortes: [
+        {
+          'quantidade': 20,
+          'metragem': 100,
+          'situacao': 'A'
+        },
+      ],
+    ),
   ];
 
   @override

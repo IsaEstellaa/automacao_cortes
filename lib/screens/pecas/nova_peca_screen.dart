@@ -50,21 +50,20 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
     if (widget.pecaParaEditar != null) {
       _nomeController.text = widget.pecaParaEditar!.nome;
       _descricaoController.text = widget.pecaParaEditar!.descricao;
-      
-      // testar isso com o back pois no front da erro de compilação, mas a ideia é preencher as fotos e cortes com os dados da peça que está sendo editada
-      // preenche as fotos
-      // _fotos.addAll(widget.pecaParaEditar!.fotos);
 
-      // // preenche os cortes — substitui o corte vazio inicial
-      // if (widget.pecaParaEditar!.cortes.isNotEmpty) {
-      //   _cortes.clear();
-      //   for (final corte in widget.pecaParaEditar!.cortes) {
-      //     final c = CorteFormulario();
-      //     c.quantidade.text = corte['quantidade'].toString();
-      //     c.metragem.text = corte['metragem'].toString();
-      //     _cortes.add(c);
-      //   }
-      // }
+      // preenche as fotos
+      _fotos.addAll(widget.pecaParaEditar!.fotos);
+
+      // preenche os cortes — substitui o corte vazio inicial
+      if (widget.pecaParaEditar!.cortes.isNotEmpty) {
+        _cortes.clear();
+        for (final corte in widget.pecaParaEditar!.cortes) {
+          final c = CorteFormulario();
+          c.quantidade.text = corte['quantidade'].toString();
+          c.metragem.text = corte['metragem'].toString();
+          _cortes.add(c);
+        }
+      }
     }
   }
 
@@ -219,7 +218,7 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
+                      child: Image.network(
                         _fotos[index],
                         width: 80,
                         height: 80,
