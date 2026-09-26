@@ -62,9 +62,10 @@ class _HomeContentState extends State<HomeContent> {
           _buildCardStatus(),
           const SizedBox(height: 16),
           BotaoNovoCorte(
-            aoTocar: () {
-              // TODO: navegar para tela de novo corte
-            },
+            aoTocar: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NovoCorteScreen()),
+            ),
           ),
           const SizedBox(height: 16),
           _buildGrid(),

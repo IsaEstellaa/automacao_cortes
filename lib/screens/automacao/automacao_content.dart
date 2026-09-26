@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/widgets/botao_novo_corte.dart';
 import 'modal_detalhes_corte.dart';
+import '../corte/novo_corte_screen.dart';
 
 // ============================================
 // modelos de dados (virão do backend)
@@ -182,9 +183,10 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
       child: Column(
         children: [
           BotaoNovoCorte(
-            aoTocar: () {
-              // TODO: navegar para tela de novo corte
-            },
+            aoTocar: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NovoCorteScreen()),
+            ),
           ),
           const SizedBox(height: 16),
           _buildSecaoFila(),
