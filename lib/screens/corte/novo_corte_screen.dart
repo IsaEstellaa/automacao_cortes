@@ -12,9 +12,25 @@ class NovoCorteScreen extends StatefulWidget {
   State<NovoCorteScreen> createState() => _NovoCorteScreenState();
 }
 
+// modelo de material --> tirar depois pq vai vir do backend
+class MaterialFio {
+  final int id;
+  final String nome;
+  final double? espessura;
+  final double gramatura;
+
+  MaterialFio({
+    required this.id,
+    required this.nome,
+    this.espessura,
+    required this.gramatura,
+  });
+}
+
 class _NovoCorteScreenState extends State<NovoCorteScreen> {
   Peca? _pecaSelecionada;
   List<bool> _cortesSelecionados = [];
+  MaterialFio? _materialSelecionado;
 
   // peças mockadas (novamente) — substituir pelo backend
   // TODO: NAO ESQUECER DE SUBSTITUIR
@@ -49,6 +65,13 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
         {'quantidade': 4, 'metragem': 250},
       ],
     ),
+  ];
+
+  // tirar depois
+  final List<MaterialFio> _materiais = [
+    MaterialFio(id: 1, nome: 'Nylon 0.5mm', espessura: 0.5, gramatura: 120),
+    MaterialFio(id: 2, nome: 'Algodão', gramatura: 80),
+    MaterialFio(id: 3, nome: 'Poliéster 1mm', espessura: 1.0, gramatura: 150),
   ];
 
   // seleção dos cortes
@@ -92,6 +115,8 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
             const SizedBox(height: 20),
             _buildSecaoPecas(),
             if (_pecaSelecionada != null) ...[
+              const SizedBox(height: 16),
+              _buildSecaoMaterial(),
               const SizedBox(height: 16),
               _buildSecaoCortes(),
               const SizedBox(height: 24),
@@ -306,6 +331,101 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
   }
 
   // ============================================
+  // seção de seleção de materiais
+  // ============================================
+  Widget _buildSecaoMaterial() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(40),
+          topRight: Radius.circular(10),
+          bottomLeft: Radius.circular(10),
+          bottomRight: Radius.circular(40),
+        ),
+        border: Border.all(color: AppColors.bordaMarrom, width: 1),
+        boxShadow: AppColors.sombra,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Selecione o material',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.green,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Column(
+            children: _materiais.map((material) {
+              final selecionado = _materialSelecionado?.id == material.id;
+              return GestureDetector(
+                onTap: () => setState(() => _materialSelecionado = material),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: selecionado
+                        ? AppColors.green.withOpacity(0.1)
+                        : AppColors.background,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(6),
+                      bottomLeft: Radius.circular(6),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    border: Border.all(
+                      color: selecionado ? AppColors.green : AppColors.bordaMarrom,
+                      width: selecionado ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.category_outlined, size: 18,
+                          color: selecionado ? AppColors.green : AppColors.green.withOpacity(0.5)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              material.nome,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: selecionado ? FontWeight.bold : FontWeight.normal,
+                                color: AppColors.green,
+                              ),
+                            ),
+                            Text(
+                              '${material.gramatura}g${material.espessura != null ? ' · ${material.espessura}mm' : ''}',
+                              style: TextStyle(fontSize: 12, color: AppColors.textoPreto),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        selecionado ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                        color: selecionado ? AppColors.green : AppColors.green.withOpacity(0.4),
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================
   // botão enviar para máquina
   // ============================================
   Widget _buildBotaoEnviar() {
@@ -314,7 +434,7 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: temSelecionados
+        onPressed: temSelecionados && _materialSelecionado != null
             ? () => ModalConfirmacao.mostrar(
                   context,
                   titulo: 'Enviar para máquina',
