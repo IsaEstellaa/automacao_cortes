@@ -4,6 +4,8 @@ import '../../core/widgets/painters.dart';
 import '../../core/widgets/card_nav.dart';
 import '../../core/widgets/fita_decorativa.dart';
 import '../../core/widgets/botao_novo_corte.dart';
+import '../corte/novo_corte_screen.dart';
+import '../materiais/materiais_screen.dart';
 
 // enum com os possíveis estados da máquina
 // quando integrar com IoT, só muda o valor do _statusAtual
@@ -194,7 +196,10 @@ class _HomeContentState extends State<HomeContent> {
               titulo: 'Materiais',
               svgPath: 'assets/icons/materiais.png',
               isPng: true,
-              aoTocar: () { /* navegar */ },
+              aoTocar: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MateriaisScreen()),
+              ),
             )),
             const SizedBox(width: 16),
             Expanded(child:
@@ -223,7 +228,10 @@ class _HomeContentState extends State<HomeContent> {
               titulo: 'Materiais',
               svgPath: 'assets/icons/materiais.png',
               isPng: true,
-              aoTocar: () { /* navegar */ },
+              aoTocar: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MateriaisScreen()),
+              ),
             )),
           ],
         ),
