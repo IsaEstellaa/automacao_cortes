@@ -2,13 +2,17 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+const usuarioRoutes = require('./routes/usuario.routes');
+
 const app = express();
 
 // middlewares
 app.use(cors());
 app.use(express.json());
 
-// rota de teste
+// rotas
+app.use('/usuario', usuarioRoutes);
+
 app.get('/', (req, res) => {
   res.json({ mensagem: 'API funcionando!' });
 });
