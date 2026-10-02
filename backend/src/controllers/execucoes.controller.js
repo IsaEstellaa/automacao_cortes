@@ -122,4 +122,90 @@ const criar = async (req, res) => {
   }
 };
 
-module.exports = { criar };
+// ============================================
+// busca execuções do usuário por situação
+// ============================================
+const buscarExecucoes = async (idUsuario, situacoes, ordem) => {
+  const execucoes = await pool.query(
+    `SELECT E.ID_EXECUCAO, E.ID_CORTE, E.ID_MATERIAL, E.SITUACAO,
+            E.DATA_CADASTRO, E.DATA_INICIO, E.DATA_FIM,
+            C.QUANTIDADE, C.METRAGEM,
+            P.ID_PECA, P.NOME AS NOME_PECA,
+            M.NOME AS NOME_MATERIAL
+     FROM EXECUCAO_CORTE E
+     JOIN CORTE C ON C.ID_CORTE = E.ID_CORTE
+     JOIN PECA P ON P.ID_PECA = C.ID_PECA
+     JOIN MATERIAL M ON M.ID_MATERIAL = E.ID_MATERIAL
+     WHERE P.ID_USUARIO = $1 AND E.SITUACAO = ANY($2)
+     ORDER BY ${ordem}`,
+    [idUsuario, situacoes]
+  );
+
+  const ids = execucoes.rows.map((e) => e.id_execucao);
+  let fios = { rows: [] };
+
+  if (ids.length > 0) {
+    fios = await pool.query(
+      `SELECT ID_FIO, ID_EXECUCAO, STATUS
+       FROM FIO
+       WHERE ID_EXECUCAO = ANY($1)
+       ORDER BY ID_FIO`,
+      [ids]
+    );
+  }
+
+  return execucoes.rows.map((e) => ({
+    ...e,
+    fios: fios.rows
+      .filter((f) => f.id_execucao === e.id_execucao)
+      .map((f) => ({ id_fio: f.id_fio, status: f.status })),
+  }));
+};
+
+// ============================================
+// listar fila (aguardando e processando, FIFO)
+// ============================================
+const listarFila = async (req, res) => {
+  try {
+    const fila = await buscarExecucoes(req.usuarioId, ['A', 'P'], 'E.ID_EXECUCAO');
+    return res.status(200).json(fila);
+
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+};
+
+// ============================================
+// listar histórico (concluídas e com erro, agrupado por peça)
+// ============================================
+const listarHistorico = async (req, res) => {
+  try {
+    const execucoes = await buscarExecucoes(
+      req.usuarioId,
+      ['C', 'E'],
+      'E.DATA_FIM DESC NULLS LAST, E.ID_EXECUCAO DESC'
+    );
+
+    const grupos = new Map();
+
+    for (const e of execucoes) {
+      if (!grupos.has(e.id_peca)) {
+        grupos.set(e.id_peca, {
+          id_peca: e.id_peca,
+          nome_peca: e.nome_peca,
+          execucoes: [],
+        });
+      }
+      grupos.get(e.id_peca).execucoes.push(e);
+    }
+
+    return res.status(200).json([...grupos.values()]);
+
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+};
+
+module.exports = { criar, listarFila, listarHistorico };
