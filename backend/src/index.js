@@ -5,6 +5,7 @@ require('dotenv').config();
 const usuarioRoutes = require('./routes/usuario.routes');
 const materiaisRoutes = require('./routes/materiais.routes');
 const pecasRoutes = require('./routes/pecas.routes');
+const execucoesRoutes = require('./routes/execucoes.routes');
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/usuario', usuarioRoutes);
 app.use('/materiais', materiaisRoutes);
 app.use('/pecas', pecasRoutes);
+app.use('/execucoes', execucoesRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensagem: 'API funcionando!' });
