@@ -339,7 +339,22 @@ const retentar = async (req, res) => {
     );
 
     if (fios.rows.length === 0) {
+      
+      const emRetentativa = await client.query(
+        `SELECT 1
+         FROM RETENTATIVA R
+         JOIN FIO F ON F.ID_FIO = R.ID_FIO
+         WHERE R.ID_EXECUCAO = $1 AND R.SITUACAO = 'P' AND F.STATUS = 'E'
+         LIMIT 1`,
+        [idExecucao]
+      );
+
       await client.query('ROLLBACK');
+
+      if (emRetentativa.rows.length > 0) {
+        return res.status(409).json({ erro: 'Os fios com erro já estão sendo retentados!' });
+      }
+      
       return res.status(400).json({ erro: 'Não há fios com erro para retentar!' });
     }
 
