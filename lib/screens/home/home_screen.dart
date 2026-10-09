@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/api_service.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/titulo_banner.dart';
@@ -69,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          AppHeader(nomeUsuario: 'Isabella'), // TODO: passar nome real do usuário
+          AppHeader(nomeUsuario: ApiService.instance.usuario?['nome'] ?? ''),
           Expanded(
             child: _buildTela(),
           ),

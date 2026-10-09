@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
+import '../../core/services/api_service.dart';
+import '../../core/widgets/modal_confirmacao.dart';
+import '../login/login_screen.dart';
 
 class ConfiguracoesContent extends StatelessWidget {
   const ConfiguracoesContent({super.key});
@@ -36,7 +39,23 @@ class ConfiguracoesContent extends StatelessWidget {
             icone: Icons.logout,
             titulo: 'Sair',
             aoTocar: () {
-              // TODO: lógica de logout
+              final navegador = Navigator.of(context);
+
+              ModalConfirmacao.mostrar(
+                context,
+                titulo: 'Sair da conta?',
+                mensagem: 'Você precisará entrar novamente para usar o app.',
+                textoBotaoConfirmar: 'Sair',
+                aoConfirmar: () async {
+                  await ApiService.instance.logout();
+
+                  // limpa a pilha
+                  navegador.pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
+              );
             },
           ),
         ],
@@ -95,7 +114,7 @@ class ConfiguracoesContent extends StatelessWidget {
                 ShaderMask(
                   shaderCallback: (bounds) => AppColors.gradienteTitulo.createShader(bounds),
                   child: Text(
-                    'Isabella Estella', // TODO: passar nome real do usuário
+                    ApiService.instance.usuario?['nome'] ?? '',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 24,
