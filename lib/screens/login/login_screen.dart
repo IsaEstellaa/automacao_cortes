@@ -1,3 +1,5 @@
+import '../../core/services/api_service.dart';
+import '../home/home_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/constants/app_colors.dart';
@@ -17,12 +19,51 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // controla se a senha está visível ou não
   bool _senhaVisivel = false;
+  bool _carregando = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _senhaController.dispose();
     super.dispose();
+  }
+
+    // ============================================
+  // autenticação
+  // ============================================
+  Future<void> _entrar() async {
+    final email = _emailController.text.trim();
+    final senha = _senhaController.text;
+
+    if (email.isEmpty || senha.isEmpty) {
+      _mostrarErro('Preencha o e-mail e a senha.');
+      return;
+    }
+
+    setState(() => _carregando = true);
+
+    try {
+      await ApiService.instance.login(email, senha);
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } on ApiException catch (e) {
+      _mostrarErro(e.mensagem);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
+
+  void _mostrarErro(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
   }
 
   @override
@@ -208,9 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // ============================================
   Widget _buildBotaoEntrar() {
     return ElevatedButton(
-        onPressed: () {
-          // TODO: chamar lógica de autenticação
-        },
+        onPressed: _carregando ? null : _entrar,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.buttonBrown,
           foregroundColor: Colors.white,
@@ -225,10 +264,25 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           elevation: 2,
         ),
-        child: const Text(
-          'Entrar',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        child: _carregando
+          ? const SizedBox(
+              width: 62,
+              height: 26,
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            )
+          : const Text(
+              'Entrar',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
       );
   }
 

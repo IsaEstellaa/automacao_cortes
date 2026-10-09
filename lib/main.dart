@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-// import 'screens/login/login_screen.dart';
+import 'screens/login/login_screen.dart';
 // import 'screens/cadastro/cadastro_screen.dart';
 import 'screens/home/home_screen.dart';
 
@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
       ),
       // home: const MyHomePage(title: 'Flutter Demo Home Page'),
       debugShowCheckedModeBanner: false,
-      home: HomeScreen(),
+      home: LoginScreen(),
     );
   }
 }
