@@ -3,6 +3,7 @@ import '../../core/widgets/painters.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/fita_decorativa.dart';
 import 'boas_vindas_screen.dart';
+import '../../core/services/api_service.dart';
 
 class CadastroScreen extends StatefulWidget {
   const CadastroScreen({super.key});
@@ -20,6 +21,7 @@ class CadastronScreenState extends State<CadastroScreen> {
   // controla se a senha está visível ou não
   bool _senhaVisivel = false;
   bool _confirmarSenhaVisivel = false;
+  bool _carregando = false;
 
   @override
   void dispose() {
@@ -28,6 +30,60 @@ class CadastronScreenState extends State<CadastroScreen> {
     _senhaController.dispose();
     _confirmarSenhaController.dispose();
     super.dispose();
+  }
+
+  // ============================================
+  // criação de conta
+  // ============================================
+  Future<void> _cadastrar() async {
+    final nome = _nomeController.text.trim();
+    final email = _emailController.text.trim();
+    final senha = _senhaController.text;
+    final confirmar = _confirmarSenhaController.text;
+
+    if (nome.isEmpty || email.isEmpty || senha.isEmpty || confirmar.isEmpty) {
+      _mostrarErro('Preencha todos os campos.');
+      return;
+    }
+
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      _mostrarErro('Informe um e-mail válido.');
+      return;
+    }
+
+    if (senha.length < 6) {
+      _mostrarErro('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    if (senha != confirmar) {
+      _mostrarErro('As senhas não conferem.');
+      return;
+    }
+
+    setState(() => _carregando = true);
+
+    try {
+      await ApiService.instance.cadastrar(nome, email, senha);
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const BoasVindasScreen()),
+      );
+    } on ApiException catch (e) {
+      _mostrarErro(e.mensagem);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
+
+  void _mostrarErro(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
   }
 
   @override
@@ -217,15 +273,7 @@ class CadastronScreenState extends State<CadastroScreen> {
   // ============================================
   Widget _buildBotaoCadastrar() {
     return ElevatedButton(
-        onPressed: () {
-          // TODO: chamar lógica de criação de conta
-
-          // por enquanto, somente direcionando ao modal de boas vindas
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BoasVindasScreen()),
-          );
-        },
+        onPressed: _carregando ? null : _cadastrar,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.buttonBrown,
           foregroundColor: Colors.white,
@@ -240,10 +288,25 @@ class CadastronScreenState extends State<CadastroScreen> {
           ),
           elevation: 2,
         ),
-        child: const Text(
-          'Finalizar',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        child: _carregando
+          ? const SizedBox(
+              width: 78,
+              height: 26,
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            )
+          : const Text(
+              'Finalizar',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
       );
   }
 }

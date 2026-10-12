@@ -39,9 +39,24 @@ class ApiService {
       'senha': senha,
     });
 
+    await _iniciarSessao(resposta);
+  }
+
+  Future<void> cadastrar(String nome, String email, String senha) async {
+    final resposta = await post('/usuario/cadastrar', {
+      'nome': nome,
+      'email': email,
+      'senha': senha,
+    });
+
+    await _iniciarSessao(resposta);
+  }
+
+  Future<void> _iniciarSessao(dynamic resposta) async {
     _token = resposta['token'] as String;
     usuario = resposta['usuario'] as Map<String, dynamic>;
 
+    // guarda o token
     await _storage.write(key: _chaveToken, value: _token);
   }
 
