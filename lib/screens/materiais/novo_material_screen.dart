@@ -4,6 +4,7 @@ import '../../core/widgets/titulo_banner.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import 'materiais_screen.dart';
+import '../../core/services/api_service.dart';
 
 class NovoMaterialScreen extends StatefulWidget {
   final MaterialFio? materialParaEditar;
@@ -22,6 +23,7 @@ class _NovoMaterialScreenState extends State<NovoMaterialScreen> {
   final _espessuraController = TextEditingController();
   final _gramaturaController = TextEditingController();
   final _observacaoController = TextEditingController();
+  bool _salvando = false;
 
   @override
   void initState() {
@@ -41,6 +43,71 @@ class _NovoMaterialScreenState extends State<NovoMaterialScreen> {
     _gramaturaController.dispose();
     _observacaoController.dispose();
     super.dispose();
+  }
+
+  // ============================================
+  // validação e envio para a API
+  // ============================================
+  Future<void> _salvar() async {
+    final nome = _nomeController.text.trim();
+    final espessuraTexto = _espessuraController.text.trim();
+    final observacao = _observacaoController.text.trim();
+
+    final gramatura = double.tryParse(
+      _gramaturaController.text.trim().replaceAll(',', '.'),
+    );
+    final espessura = espessuraTexto.isEmpty
+        ? null
+        : double.tryParse(espessuraTexto.replaceAll(',', '.'));
+
+    if (nome.isEmpty) {
+      _mostrarErro('Informe o nome do material.');
+      return;
+    }
+
+    if (gramatura == null || gramatura <= 0) {
+      _mostrarErro('Informe a gramatura (maior que zero).');
+      return;
+    }
+
+    if (espessuraTexto.isNotEmpty && (espessura == null || espessura <= 0)) {
+      _mostrarErro('A espessura deve ser um número maior que zero.');
+      return;
+    }
+
+    final corpo = <String, dynamic>{
+      'nome': nome,
+      'gramatura': gramatura,
+      'espessura': espessura,
+      'observacao': observacao.isEmpty ? null : observacao,
+    };
+
+    setState(() => _salvando = true);
+
+    try {
+      final material = widget.materialParaEditar;
+
+      if (material == null) {
+        await ApiService.instance.post('/materiais', corpo);
+      } else {
+        await ApiService.instance.put('/materiais/${material.id}', corpo);
+      }
+
+      if (!mounted) return;
+
+      Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      _mostrarErro(e.mensagem);
+    } finally {
+      if (mounted) setState(() => _salvando = false);
+    }
+  }
+
+  void _mostrarErro(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
   }
 
   @override
@@ -114,7 +181,7 @@ class _NovoMaterialScreenState extends State<NovoMaterialScreen> {
           _buildCampo(
             controller: _gramaturaController,
             hint: 'Ex: 120',
-            teclado: TextInputType.number,
+            teclado: const TextInputType.numberWithOptions(decimal: true),
           ),
           const SizedBox(height: 16),
 
@@ -123,7 +190,7 @@ class _NovoMaterialScreenState extends State<NovoMaterialScreen> {
           _buildCampo(
             controller: _espessuraController,
             hint: 'Ex: 0.5',
-            teclado: TextInputType.number,
+            teclado: const TextInputType.numberWithOptions(decimal: true),
           ),
           const SizedBox(height: 16),
 
@@ -146,10 +213,7 @@ class _NovoMaterialScreenState extends State<NovoMaterialScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          // TODO: validar e salvar via API
-          Navigator.pop(context);
-        },
+        onPressed: _salvando ? null : _salvar,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.green,
           foregroundColor: Colors.white,
@@ -163,10 +227,19 @@ class _NovoMaterialScreenState extends State<NovoMaterialScreen> {
             ),
           ),
         ),
-        child: Text(
-          editando ? 'Salvar alterações' : 'Salvar material',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        child: _salvando
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Text(
+              editando ? 'Salvar alterações' : 'Salvar material',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
       ),
     );
   }
