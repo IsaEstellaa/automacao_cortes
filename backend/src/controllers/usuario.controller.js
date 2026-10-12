@@ -8,11 +8,30 @@ const jwt = require('jsonwebtoken');
 const cadastrar = async (req, res) => {
   const { nome, email, senha, telefone, data_nasc, sexo } = req.body;
 
+  if (typeof nome !== 'string' || nome.trim() === '') {
+    return res.status(400).json({ erro: 'Nome é obrigatório!' });
+  }
+
+  if (typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+    return res.status(400).json({ erro: 'Informe um e-mail válido!' });
+  }
+
+  if (typeof senha !== 'string' || senha.length < 6) {
+    return res.status(400).json({ erro: 'A senha deve ter pelo menos 6 caracteres!' });
+  }
+
+  if (Buffer.byteLength(senha, 'utf8') > 72) {
+    return res.status(400).json({ erro: 'A senha é muito longa!' });
+  }
+
+  const nomeLimpo = nome.trim();
+  const emailLimpo = email.trim();
+
   try {
     // verifica se o email já existe
     const emailExiste = await pool.query(
       'SELECT ID_USUARIO FROM USUARIO WHERE EMAIL = $1',
-      [email]
+      [emailLimpo]
     );
 
     if (emailExiste.rows.length > 0) {
@@ -28,7 +47,7 @@ const cadastrar = async (req, res) => {
       `INSERT INTO USUARIO (NOME, EMAIL, SENHA, TELEFONE, DATA_NASC, SEXO)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING ID_USUARIO, NOME, EMAIL`,
-      [nome, email, senhaCriptografada, telefone, data_nasc, sexo]
+      [nomeLimpo, emailLimpo, senhaCriptografada, telefone, data_nasc, sexo]
     );
 
     const usuario = resultado.rows[0];
