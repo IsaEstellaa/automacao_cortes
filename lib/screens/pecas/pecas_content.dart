@@ -4,10 +4,18 @@ import '../../core/widgets/botao_novo_corte.dart';
 import 'peca_card.dart';
 import 'peca_detalhes_screen.dart';
 import 'nova_peca_screen.dart';
+import '../../core/services/api_service.dart';
+import '../../core/widgets/estado_erro.dart';
 
 // ============================================
-// modelo de peça (vai vir do backend)
+// modelo de peça
 // ============================================
+
+num _paraNumero(dynamic valor) {
+  final n = num.tryParse(valor.toString()) ?? 0;
+  return n == n.truncate() ? n.truncate() : n;
+}
+
 class Peca {
   final int id;
   final String nome;
@@ -24,6 +32,25 @@ class Peca {
     this.favorito = false,
     this.cortes = const [],
   });
+
+  factory Peca.fromJson(Map<String, dynamic> json) {
+    final cortes = ((json['cortes'] as List?) ?? [])
+      .map<Map<String, dynamic>>((c) => {
+            'id_corte': c['id_corte'],
+            'quantidade': _paraNumero(c['quantidade']),
+            'metragem': _paraNumero(c['metragem']),
+            'situacao': 'A',
+          })
+      .toList();
+
+    return Peca(
+      id: json['id_peca'] as int,
+      nome: json['nome'] as String,
+      descricao: (json['descricao'] as String?) ?? '',
+      fotos: <String>[], // TODO: upload de fotos ainda não existe
+      cortes: cortes,
+    );
+  }
 }
 
 // ============================================
@@ -41,46 +68,74 @@ class _PecasContentState extends State<PecasContent> {
   bool _mostrarFavoritos = false;
   String _termoBusca = '';
 
-  // dados mockados
-  final List<Peca> _pecas = [
-    Peca(id: 1, nome: 'Bolsa', descricao: 'Bolsa de macramê com alças longas.', fotos: ['https://images.unsplash.com/photo-1523381210434-271e8be1f52b', 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b'], favorito: true,
-        cortes: [
-        {
-          'quantidade': 45,
-          'metragem': 250,
-          'situacao': 'A'
-        },
-        {
-          'quantidade': 10,
-          'metragem': 180,
-          'situacao': 'A'
-        },
-      ],
-    ),
-    Peca(id: 2, nome: 'Painel', descricao: 'Painel decorativo para sala.', fotos: [],
-        cortes: [
-        {
-          'quantidade': 30,
-          'metragem': 200,
-          'situacao': 'A'
-        },
-        {
-          'quantidade': 15,
-          'metragem': 150,
-          'situacao': 'A'
-        },
-      ],
-    ),
-    Peca(id: 3, nome: 'Suporte', descricao: 'Suporte para vasos.', fotos: [],
-        cortes: [
-        {
-          'quantidade': 20,
-          'metragem': 100,
-          'situacao': 'A'
-        },
-      ],
-    ),
-  ];
+  List<Peca> _pecas = [];
+  bool _carregando = true;
+  String? _erro;
+
+  //TODO: favoritos ainda não são salvos no backend: ficam guardados só enquanto o app está aberto
+  final Set<int> _favoritosIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  // ============================================
+  // busca as peças na API
+  // ============================================
+  Future<void> _carregar() async {
+    setState(() {
+      _carregando = true;
+      _erro = null;
+    });
+
+    try {
+      final resposta = await ApiService.instance.get('/pecas') as List;
+      final lista = resposta.map((j) {
+        final peca = Peca.fromJson(j as Map<String, dynamic>);
+        peca.favorito = _favoritosIds.contains(peca.id);
+        return peca;
+      }).toList();
+
+      if (!mounted) return;
+      setState(() => _pecas = lista);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _erro = e.mensagem);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
+
+  Future<void> _abrirNovaPeca() async {
+    final salvou = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const NovaPecaScreen()),
+    );
+
+    if (salvou == true) _carregar();
+  }
+
+  Future<void> _abrirDetalhes(Peca peca) async {
+    final mudou = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => PecaDetalhesScreen(peca: peca)),
+    );
+
+    if (mudou == true) _carregar();
+  }
+
+  void _alternarFavorito(Peca peca) {
+    setState(() {
+      peca.favorito = !peca.favorito;
+      if (peca.favorito) {
+        _favoritosIds.add(peca.id);
+      } else {
+        _favoritosIds.remove(peca.id);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -108,10 +163,7 @@ class _PecasContentState extends State<PecasContent> {
 
               BotaoNovoCorte(
                 texto: 'Nova peça',
-                aoTocar: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NovaPecaScreen()),
-                ),
+                aoTocar: _abrirNovaPeca,
               ),
               const SizedBox(height: 16),
 
@@ -130,31 +182,30 @@ class _PecasContentState extends State<PecasContent> {
 
         // grid das peças
         Expanded(
-          child: _pecasFiltradas.isEmpty
-              ? _buildVazio()
-              : GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.85,  // altura dos cards
-                  ),
-                  itemCount: _pecasFiltradas.length,
-                  itemBuilder: (_, index) {
-                    final peca = _pecasFiltradas[index];
-                    return PecaCard(
-                      peca: peca,
-                      aoTocar: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PecaDetalhesScreen(peca: peca),
+          child: _carregando
+              ? Center(child: CircularProgressIndicator(color: AppColors.green))
+              : _erro != null
+                  ? EstadoErro(mensagem: _erro!, aoTentarNovamente: _carregar)
+                  : _pecasFiltradas.isEmpty
+                      ? _buildVazio()
+                      : GridView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.85, // altura dos cards
+                          ),
+                          itemCount: _pecasFiltradas.length,
+                          itemBuilder: (_, index) {
+                            final peca = _pecasFiltradas[index];
+                            return PecaCard(
+                              peca: peca,
+                              aoTocar: () => _abrirDetalhes(peca),
+                              aoFavoritar: () => _alternarFavorito(peca),
+                            );
+                          },
                         ),
-                      ),
-                      aoFavoritar: () => setState(() => peca.favorito = !peca.favorito),
-                    );
-                  },
-                ),
         ),
       ],
     );

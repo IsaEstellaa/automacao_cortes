@@ -20,7 +20,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _indiceSelecionado = 2;
 
-  // TODO: substituir por telas reais depois
   Widget _buildTela() {
     switch (_indiceSelecionado) {
       case 0:

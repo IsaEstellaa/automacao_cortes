@@ -4,9 +4,11 @@ import '../../core/widgets/titulo_banner.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import '../../core/widgets/painters.dart';
 import 'pecas_content.dart';
+import '../../core/services/api_service.dart';
 
 // modelo de corte do formulário
 class CorteFormulario {
+  int? idCorte;
   TextEditingController quantidade;
   TextEditingController metragem;
 
@@ -41,6 +43,7 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
 
   // lista de cortes do formulário — começa com um vazio
   final List<CorteFormulario> _cortes = [CorteFormulario()];
+  bool _salvando = false;
 
   @override
   void initState() {
@@ -61,6 +64,7 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
           final c = CorteFormulario();
           c.quantidade.text = corte['quantidade'].toString();
           c.metragem.text = corte['metragem'].toString();
+          c.idCorte = corte['id_corte'] as int?;
           _cortes.add(c);
         }
       }
@@ -73,6 +77,71 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
     _descricaoController.dispose();
     for (final c in _cortes) c.dispose();
     super.dispose();
+  }
+
+  // ============================================
+  // validação e envio para a API
+  // ============================================
+  Future<void> _salvar() async {
+    final nome = _nomeController.text.trim();
+    final descricao = _descricaoController.text.trim();
+
+    if (nome.isEmpty) {
+      _mostrarErro('Informe o nome da peça.');
+      return;
+    }
+
+    final cortes = <Map<String, dynamic>>[];
+
+    for (final c in _cortes) {
+      final quantidade = int.tryParse(c.quantidade.text.trim());
+      final metragem = double.tryParse(c.metragem.text.trim().replaceAll(',', '.'));
+
+      if (quantidade == null || quantidade <= 0 || metragem == null || metragem <= 0) {
+        _mostrarErro('Preencha a quantidade e os metros de todos os cortes (ou remova os vazios).');
+        return;
+      }
+
+      cortes.add({
+        // só cortes que já existem levam o id (os novos vão sem)
+        if (c.idCorte != null) 'id_corte': c.idCorte,
+        'quantidade': quantidade,
+        'metragem': metragem,
+      });
+    }
+
+    final corpo = <String, dynamic>{
+      'nome': nome,
+      'descricao': descricao.isEmpty ? null : descricao,
+      'cortes': cortes,
+    };
+
+    setState(() => _salvando = true);
+
+    try {
+      final peca = widget.pecaParaEditar;
+
+      if (peca == null) {
+        await ApiService.instance.post('/pecas', corpo);
+      } else {
+        await ApiService.instance.put('/pecas/${peca.id}', corpo);
+      }
+
+      if (!mounted) return;
+
+      Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      _mostrarErro(e.mensagem);
+    } finally {
+      if (mounted) setState(() => _salvando = false);
+    }
+  }
+
+  void _mostrarErro(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
   }
 
   @override
@@ -383,7 +452,7 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
                 width: 50,
                 child: TextField(
                   controller: _cortes[index].metragem,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: AppColors.green),
                   decoration: InputDecoration(
@@ -426,9 +495,7 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          // TODO: validar e salvar via API
-        },
+        onPressed: _salvando ? null : _salvar,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.green,
           foregroundColor: Colors.white,
@@ -442,10 +509,19 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
             ),
           ),
         ),
-        child: Text(
-          widget.pecaParaEditar != null ? 'Salvar alterações' : 'Salvar peça',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        child: _salvando
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Text(
+              widget.pecaParaEditar != null ? 'Salvar alterações' : 'Salvar peça',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
       ),
     );
   }

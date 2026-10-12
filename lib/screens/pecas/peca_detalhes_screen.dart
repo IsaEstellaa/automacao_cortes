@@ -5,6 +5,7 @@ import '../../core/widgets/titulo_banner.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import 'nova_peca_screen.dart';
 import 'pecas_content.dart';
+import '../../core/services/api_service.dart';
 
 class PecaDetalhesScreen extends StatefulWidget {
   final Peca peca;
@@ -32,8 +33,6 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
       ),
       body: Column(
         children: [
-          // aind nao sei se vou usar o AppHeader aqui, mas vou deixar comentado por enquanto
-          // AppHeader(nomeUsuario: 'Isabella'), // TODO: nome real
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -260,13 +259,16 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final salvou = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => NovaPecaScreen(pecaParaEditar: widget.peca), // 👈 passa a peça
+                  builder: (_) => NovaPecaScreen(pecaParaEditar: widget.peca),
                 ),
               );
+
+              // peça editada: volta para a lista, que recarrega com os dados novos
+              if (salvou == true && mounted) Navigator.pop(context, true);
             },
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('Editar'),
@@ -316,11 +318,23 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
       titulo: 'Excluir peça',
       mensagem: 'Tem certeza que deseja excluir "${widget.peca.nome}"? Essa ação não poderá ser desfeita.',
       textoBotaoConfirmar: 'Excluir',
-      aoConfirmar: () {
-        // TODO: chamar API para excluir
-        Navigator.pop(context); // volta para lista de peças
-      },
+      aoConfirmar: () => _excluir(),
       corBotao: AppColors.buttonRed,
     );
+  }
+
+  Future<void> _excluir() async {
+    try {
+      await ApiService.instance.delete('/pecas/${widget.peca.id}');
+
+      if (!mounted) return;
+
+      Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.mensagem)),
+      );
+    }
   }
 }

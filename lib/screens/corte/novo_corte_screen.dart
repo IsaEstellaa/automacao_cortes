@@ -4,6 +4,9 @@ import '../../core/widgets/titulo_banner.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import '../pecas/pecas_content.dart';
+import '../../core/services/api_service.dart';
+import '../../core/widgets/estado_erro.dart';
+import '../materiais/materiais_screen.dart';
 
 class NovoCorteScreen extends StatefulWidget {
   const NovoCorteScreen({super.key});
@@ -12,67 +15,99 @@ class NovoCorteScreen extends StatefulWidget {
   State<NovoCorteScreen> createState() => _NovoCorteScreenState();
 }
 
-// modelo de material --> tirar depois pq vai vir do backend
-class MaterialFio {
-  final int id;
-  final String nome;
-  final double? espessura;
-  final double gramatura;
-
-  MaterialFio({
-    required this.id,
-    required this.nome,
-    this.espessura,
-    required this.gramatura,
-  });
-}
-
 class _NovoCorteScreenState extends State<NovoCorteScreen> {
   Peca? _pecaSelecionada;
   List<bool> _cortesSelecionados = [];
   MaterialFio? _materialSelecionado;
 
-  // peças mockadas (novamente) — substituir pelo backend
-  // TODO: NAO ESQUECER DE SUBSTITUIR
-  final List<Peca> _pecas = [
-    Peca(
-      id: 1,
-      nome: 'Bolsa',
-      descricao: 'Bolsa de macramê',
-      fotos: [],
-      cortes: [
-        {'quantidade': 10, 'metragem': 500},
-        {'quantidade': 5, 'metragem': 200},
-        {'quantidade': 8, 'metragem': 300},
-      ],
-    ),
-    Peca(
-      id: 2,
-      nome: 'Painel',
-      descricao: 'Painel decorativo',
-      fotos: [],
-      cortes: [
-        {'quantidade': 20, 'metragem': 100},
-      ],
-    ),
-    Peca(
-      id: 3,
-      nome: 'Suporte',
-      descricao: 'Suporte para vasos',
-      fotos: [],
-      cortes: [
-        {'quantidade': 6, 'metragem': 150},
-        {'quantidade': 4, 'metragem': 250},
-      ],
-    ),
-  ];
+  List<Peca> _pecas = [];
+  List<MaterialFio> _materiais = [];
+  bool _carregando = true;
+  bool _enviando = false;
+  String? _erro;
 
-  // tirar depois
-  final List<MaterialFio> _materiais = [
-    MaterialFio(id: 1, nome: 'Nylon 0.5mm', espessura: 0.5, gramatura: 120),
-    MaterialFio(id: 2, nome: 'Algodão', gramatura: 80),
-    MaterialFio(id: 3, nome: 'Poliéster 1mm', espessura: 1.0, gramatura: 150),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  // ============================================
+  // busca peças e materiais na API
+  // ============================================
+  Future<void> _carregar() async {
+    setState(() {
+      _carregando = true;
+      _erro = null;
+    });
+
+    try {
+      final respostas = await Future.wait([
+        ApiService.instance.get('/pecas'),
+        ApiService.instance.get('/materiais'),
+      ]);
+
+      final pecas = (respostas[0] as List)
+          .map((j) => Peca.fromJson(j as Map<String, dynamic>))
+          .toList();
+      final materiais = (respostas[1] as List)
+          .map((j) => MaterialFio.fromJson(j as Map<String, dynamic>))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _pecas = pecas;
+        _materiais = materiais;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _erro = e.mensagem);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
+
+  // ============================================
+  // envia os cortes marcados para a fila da máquina
+  // ============================================
+  Future<void> _enviar() async {
+    final peca = _pecaSelecionada!;
+    final material = _materialSelecionado!;
+
+    final ids = <int>[
+      for (var i = 0; i < peca.cortes.length; i++)
+        if (_cortesSelecionados[i]) peca.cortes[i]['id_corte'] as int,
+    ];
+
+    final mensagens = ScaffoldMessenger.of(context);
+
+    setState(() => _enviando = true);
+
+    try {
+      await ApiService.instance.post('/execucoes', {
+        'id_material': material.id,
+        'cortes': ids,
+      });
+
+      if (!mounted) return;
+
+      Navigator.pop(context, true);
+      mensagens.showSnackBar(
+        const SnackBar(content: Text('Cortes enviados para a máquina!')),
+      );
+    } on ApiException catch (e) {
+      _mostrarErro(e.mensagem);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  void _mostrarErro(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
+  }
 
   // seleção dos cortes
   void _selecionarPeca(Peca peca) {
@@ -107,24 +142,28 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Column(
-          children: [
-            TituloBanner(titulo: 'Novo corte'),
-            const SizedBox(height: 20),
-            _buildSecaoPecas(),
-            if (_pecaSelecionada != null) ...[
-              const SizedBox(height: 16),
-              _buildSecaoMaterial(),
-              const SizedBox(height: 16),
-              _buildSecaoCortes(),
-              const SizedBox(height: 24),
-              _buildBotaoEnviar(),
-              const SizedBox(height: 16),
-            ],
-          ],
-        ),
+      body: _carregando
+        ? Center(child: CircularProgressIndicator(color: AppColors.green))
+        : _erro != null
+            ? EstadoErro(mensagem: _erro!, aoTentarNovamente: _carregar)
+            : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: Column(
+                children: [
+                  TituloBanner(titulo: 'Novo corte'),
+                  const SizedBox(height: 20),
+                  _buildSecaoPecas(),
+                  if (_pecaSelecionada != null) ...[
+                    const SizedBox(height: 16),
+                    _buildSecaoMaterial(),
+                    const SizedBox(height: 16),
+                    _buildSecaoCortes(),
+                    const SizedBox(height: 24),
+                    _buildBotaoEnviar(),
+                    const SizedBox(height: 16),
+                  ],
+                ],
+              ),
       ),
     );
   }
@@ -161,67 +200,73 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
           const SizedBox(height: 12),
 
           // lista de peças
-          Column(
-            children: _pecas.map((peca) {
-              final selecionada = _pecaSelecionada?.id == peca.id;
-              return GestureDetector(
-                onTap: () => _selecionarPeca(peca),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: selecionada
-                        ? AppColors.green.withOpacity(0.1)
-                        : AppColors.background,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(6),
-                      bottomLeft: Radius.circular(6),
-                      bottomRight: Radius.circular(20),
-                    ),
-                    border: Border.all(
-                      color: selecionada ? AppColors.green : AppColors.bordaMarrom,
-                      width: selecionada ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.checkroom_outlined,
-                        size: 20,
-                        color: selecionada ? AppColors.green : AppColors.green.withOpacity(0.5),
+          if (_pecas.isEmpty)
+            Text(
+              'Nenhuma peça cadastrada. Cadastre uma peça primeiro.',
+              style: TextStyle(fontSize: 13, color: AppColors.green.withOpacity(0.5)),
+            )
+          else
+            Column(
+              children: _pecas.map((peca) {
+                final selecionada = _pecaSelecionada?.id == peca.id;
+                return GestureDetector(
+                  onTap: () => _selecionarPeca(peca),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: selecionada
+                          ? AppColors.green.withOpacity(0.1)
+                          : AppColors.background,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(6),
+                        bottomLeft: Radius.circular(6),
+                        bottomRight: Radius.circular(20),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          peca.nome,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: selecionada ? FontWeight.bold : FontWeight.normal,
-                            color: AppColors.green,
+                      border: Border.all(
+                        color: selecionada ? AppColors.green : AppColors.bordaMarrom,
+                        width: selecionada ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.checkroom_outlined,
+                          size: 20,
+                          color: selecionada ? AppColors.green : AppColors.green.withOpacity(0.5),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            peca.nome,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: selecionada ? FontWeight.bold : FontWeight.normal,
+                              color: AppColors.green,
+                            ),
                           ),
                         ),
-                      ),
-                      Text(
-                        '${peca.cortes.length} corte${peca.cortes.length != 1 ? 's' : ''}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.green.withOpacity(0.5),
+                        Text(
+                          '${peca.cortes.length} corte${peca.cortes.length != 1 ? 's' : ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.green.withOpacity(0.5),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        selecionada ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                        color: selecionada ? AppColors.green : AppColors.green.withOpacity(0.4),
-                        size: 20,
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Icon(
+                          selecionada ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                          color: selecionada ? AppColors.green : AppColors.green.withOpacity(0.4),
+                          size: 20,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
@@ -361,65 +406,71 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
           ),
           const SizedBox(height: 12),
 
-          Column(
-            children: _materiais.map((material) {
-              final selecionado = _materialSelecionado?.id == material.id;
-              return GestureDetector(
-                onTap: () => setState(() => _materialSelecionado = material),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: selecionado
-                        ? AppColors.green.withOpacity(0.1)
-                        : AppColors.background,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(6),
-                      bottomLeft: Radius.circular(6),
-                      bottomRight: Radius.circular(20),
+          if (_materiais.isEmpty)
+            Text(
+              'Nenhum material cadastrado. Cadastre um material primeiro.',
+              style: TextStyle(fontSize: 13, color: AppColors.green.withOpacity(0.5)),
+            )
+          else
+            Column(
+              children: _materiais.map((material) {
+                final selecionado = _materialSelecionado?.id == material.id;
+                return GestureDetector(
+                  onTap: () => setState(() => _materialSelecionado = material),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: selecionado
+                          ? AppColors.green.withOpacity(0.1)
+                          : AppColors.background,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(6),
+                        bottomLeft: Radius.circular(6),
+                        bottomRight: Radius.circular(20),
+                      ),
+                      border: Border.all(
+                        color: selecionado ? AppColors.green : AppColors.bordaMarrom,
+                        width: selecionado ? 1.5 : 1,
+                      ),
                     ),
-                    border: Border.all(
-                      color: selecionado ? AppColors.green : AppColors.bordaMarrom,
-                      width: selecionado ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.category_outlined, size: 18,
-                          color: selecionado ? AppColors.green : AppColors.green.withOpacity(0.5)),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              material.nome,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: selecionado ? FontWeight.bold : FontWeight.normal,
-                                color: AppColors.green,
+                    child: Row(
+                      children: [
+                        Icon(Icons.category_outlined, size: 18,
+                            color: selecionado ? AppColors.green : AppColors.green.withOpacity(0.5)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                material.nome,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: selecionado ? FontWeight.bold : FontWeight.normal,
+                                  color: AppColors.green,
+                                ),
                               ),
-                            ),
-                            Text(
-                              '${material.gramatura}g${material.espessura != null ? ' · ${material.espessura}mm' : ''}',
-                              style: TextStyle(fontSize: 12, color: AppColors.textoPreto),
-                            ),
-                          ],
+                              Text(
+                                '${material.gramatura}g${material.espessura != null ? ' · ${material.espessura}mm' : ''}',
+                                style: TextStyle(fontSize: 12, color: AppColors.textoPreto),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Icon(
-                        selecionado ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                        color: selecionado ? AppColors.green : AppColors.green.withOpacity(0.4),
-                        size: 20,
-                      ),
-                    ],
+                        Icon(
+                          selecionado ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                          color: selecionado ? AppColors.green : AppColors.green.withOpacity(0.4),
+                          size: 20,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
@@ -434,17 +485,14 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: temSelecionados && _materialSelecionado != null
+        onPressed: temSelecionados && _materialSelecionado != null && !_enviando
             ? () => ModalConfirmacao.mostrar(
                   context,
                   titulo: 'Enviar para máquina',
                   mensagem:
                       'Deseja enviar $_totalSelecionados corte${_totalSelecionados != 1 ? 's' : ''} de "${_pecaSelecionada!.nome}" para a máquina?',
                   textoBotaoConfirmar: 'Enviar',
-                  aoConfirmar: () {
-                    // TODO: criar EXECUCAO_CORTE e enviar para a fila
-                    Navigator.pop(context);
-                  },
+                  aoConfirmar: () => _enviar(),
                   corBotao: AppColors.green,
                 )
             : null, // desabilita se não tiver nenhum selecionado
@@ -462,12 +510,21 @@ class _NovoCorteScreenState extends State<NovoCorteScreen> {
             ),
           ),
         ),
-        child: Text(
-          temSelecionados
-              ? 'Enviar $_totalSelecionados corte${_totalSelecionados != 1 ? 's' : ''} para máquina'
-              : 'Selecione ao menos um corte',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        child: _enviando
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Text(
+              temSelecionados
+                  ? 'Enviar $_totalSelecionados corte${_totalSelecionados != 1 ? 's' : ''} para máquina'
+                  : 'Selecione ao menos um corte',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
       ),
     );
   }
