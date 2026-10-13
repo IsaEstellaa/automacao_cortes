@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import 'novo_material_screen.dart';
 import '../../core/services/api_service.dart';
+import '../../core/widgets/estado_erro.dart';
 
 // ============================================
 // modelo de material (virá do backend)
@@ -138,7 +139,7 @@ class _MateriaisScreenState extends State<MateriaisScreen> {
       body: _carregando
         ? Center(child: CircularProgressIndicator(color: AppColors.green))
         : _erro != null
-            ? _buildErro()
+            ? EstadoErro(mensagem: _erro!, aoTentarNovamente: _carregar)
             : _materiais.isEmpty
                 ? _buildVazio()
                 : ListView.separated(
@@ -235,46 +236,6 @@ class _MateriaisScreenState extends State<MateriaisScreen> {
             style: TextStyle(fontSize: 13, color: AppColors.textoPreto),
           ),
         ],
-      ),
-    );
-  }
-
-  // ============================================
-  // estado de erro (sem conexão, etc.)
-  // ============================================
-  Widget _buildErro() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.cloud_off_outlined, size: 64, color: AppColors.green.withOpacity(0.3)),
-            const SizedBox(height: 12),
-            Text(
-              _erro!,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: AppColors.green.withOpacity(0.6)),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _carregar,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.green,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(10),
-                    topRight: Radius.circular(30),
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(10),
-                  ),
-                ),
-              ),
-              child: const Text('Tentar novamente'),
-            ),
-          ],
-        ),
       ),
     );
   }

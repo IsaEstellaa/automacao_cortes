@@ -1,4 +1,6 @@
-const { Pool } = require("pg");
+const { Pool, types } = require('pg');
+
+types.setTypeParser(1114, (valor) => new Date(valor.replace(' ', 'T') + 'Z'));
 require("dotenv").config();
 
 // Pool gerencia as conexões com o banco

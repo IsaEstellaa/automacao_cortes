@@ -1,19 +1,35 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/widgets/painters.dart';
 import '../../core/widgets/botao_novo_corte.dart';
 import 'modal_detalhes_corte.dart';
 import '../corte/novo_corte_screen.dart';
+import '../../core/services/api_service.dart';
+import '../../core/widgets/estado_erro.dart';
 
 // ============================================
-// modelos de dados (virão do backend)
+// modelos de dados
 // ============================================
+
+DateTime? _paraData(dynamic valor) =>
+    valor == null ? null : DateTime.tryParse(valor.toString());
+
+// 5.00 vira "5" e 2.50 vira "2.5"
+String _formatarMetros(double valor) =>
+    valor.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
 
 class FioExecucao {
   final int id;
   final String status; // P=pendente, C=concluído, E=erro
 
   FioExecucao({required this.id, required this.status});
+
+  factory FioExecucao.fromJson(Map<String, dynamic> json) {
+    return FioExecucao(
+      id: json['id_fio'] as int,
+      status: json['status'] as String,
+    );
+  }
 }
 
 class ExecucaoCorte {
@@ -22,7 +38,7 @@ class ExecucaoCorte {
   final int quantidade;
   final double metragem;
   final List<FioExecucao> fios;
-  final String situacao; // A=aguardando, P=processando, C=concluído
+  final String situacao; // A=aguardando, P=processando, C=concluído, E=com erro
   final DateTime? dataInicio;
   final DateTime? dataFim;
 
@@ -37,6 +53,21 @@ class ExecucaoCorte {
     this.dataFim,
   });
 
+  factory ExecucaoCorte.fromJson(Map<String, dynamic> json) {
+    return ExecucaoCorte(
+      id: json['id_execucao'] as int,
+      nomePeca: json['nome_peca'] as String,
+      quantidade: (json['quantidade'] as num).toInt(),
+      metragem: double.tryParse(json['metragem'].toString()) ?? 0,
+      situacao: json['situacao'] as String,
+      dataInicio: _paraData(json['data_inicio']),
+      dataFim: _paraData(json['data_fim']),
+      fios: (json['fios'] as List)
+          .map((f) => FioExecucao.fromJson(f as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
   // cálculos baseados nos fios
   int get fiosConcluidos => fios.where((f) => f.status == 'C').length;
   int get fiosPendentes => fios.where((f) => f.status == 'P').length;
@@ -46,15 +77,27 @@ class ExecucaoCorte {
 }
 
 class HistoricoPeca {
+  final int idPeca;
   final String nomePeca;
   final List<ExecucaoCorte> execucoes;
   bool expandido;
 
   HistoricoPeca({
+    required this.idPeca,
     required this.nomePeca,
     required this.execucoes,
     this.expandido = false,
   });
+
+  factory HistoricoPeca.fromJson(Map<String, dynamic> json) {
+    return HistoricoPeca(
+      idPeca: json['id_peca'] as int,
+      nomePeca: json['nome_peca'] as String,
+      execucoes: (json['execucoes'] as List)
+          .map((e) => ExecucaoCorte.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
 }
 
 // ============================================
@@ -69,103 +112,126 @@ class AutomacaoContent extends StatefulWidget {
 
 class _AutomacaoContentState extends State<AutomacaoContent> {
 
-  // dados mockados
-  // TODO: substituir por dados reais!!!!!!!
-  final List<ExecucaoCorte> _fila = [
-    ExecucaoCorte(
-      id: 1,
-      nomePeca: 'Bolsa',
-      quantidade: 30,
-      metragem: 44,
-      situacao: 'P',
-      dataInicio: DateTime.now().subtract(const Duration(minutes: 6, seconds: 23)),
-      fios: List.generate(30, (i) => FioExecucao(id: i, status: i < 28 ? 'C' : 'P')),
-    ),
-    ExecucaoCorte(
-      id: 2,
-      nomePeca: 'Bolsa',
-      quantidade: 12,
-      metragem: 2,
-      situacao: 'A',
-      fios: List.generate(12, (i) => FioExecucao(id: i, status: 'P')),
-    ),
-    ExecucaoCorte(
-      id: 3,
-      nomePeca: 'Bolsa',
-      quantidade: 20,
-      metragem: 20,
-      situacao: 'A',
-      fios: List.generate(20, (i) => FioExecucao(id: i, status: 'P')),
-    ),
-  ];
+  List<ExecucaoCorte> _fila = [];
+  List<HistoricoPeca> _historico = [];
+  bool _carregando = true;
+  bool _buscando = false;
+  String? _erro;
+  Timer? _timer;
 
-  final List<HistoricoPeca> _historico = [
-    HistoricoPeca(
-      nomePeca: 'Bolsa',
-      execucoes: [
-        ExecucaoCorte(
-          id: 10,
-          nomePeca: 'Bolsa',
-          quantidade: 30,
-          metragem: 44,
-          situacao: 'C',
-          dataInicio: DateTime.now().subtract(const Duration(hours: 2)),
-          dataFim: DateTime.now().subtract(const Duration(hours: 1, minutes: 53)),
-          fios: List.generate(30, (i) => FioExecucao(id: i, status: i < 28 ? 'C' : 'E')),
-        ),
-        ExecucaoCorte(
-          id: 10,
-          nomePeca: 'Bolsa',
-          quantidade: 20,
-          metragem: 190,
-          situacao: 'C',
-          dataInicio: DateTime.now().subtract(const Duration(hours: 2)),
-          dataFim: DateTime.now().subtract(const Duration(hours: 1, minutes: 53)),
-          fios: List.generate(20, (i) => FioExecucao(id: i, status: i < 20 ? 'C' : 'E')),
-        ),
-        ExecucaoCorte(
-          id: 10,
-          nomePeca: 'Bolsa',
-          quantidade: 15,
-          metragem: 102,
-          situacao: 'C',
-          dataInicio: DateTime.now().subtract(const Duration(hours: 2)),
-          dataFim: DateTime.now().subtract(const Duration(hours: 1, minutes: 53)),
-          fios: List.generate(15, (i) => FioExecucao(id: i, status: i < 14 ? 'C' : 'E')),
-        ),
-      ],
-    ),
-    HistoricoPeca(
-      nomePeca: 'Bolsa',
-      execucoes: [
-        ExecucaoCorte(
-          id: 10,
-          nomePeca: 'Bolsa',
-          quantidade: 30,
-          metragem: 44,
-          situacao: 'C',
-          dataInicio: DateTime.now().subtract(const Duration(hours: 2)),
-          dataFim: DateTime.now().subtract(const Duration(hours: 1, minutes: 53)),
-          fios: List.generate(30, (i) => FioExecucao(id: i, status: i < 30 ? 'C' : 'E')),
-        ),
-      ],
-    ),
-    HistoricoPeca(
-      nomePeca: 'Bolsa',
-      execucoes: [
-        ExecucaoCorte(
-          id: 10,
-          nomePeca: 'Bolsa',
-          quantidade: 30,
-          metragem: 44,
-          situacao: 'C',
-          dataInicio: DateTime.now().subtract(const Duration(hours: 2)),
-          dataFim: DateTime.now().subtract(const Duration(hours: 1, minutes: 53)),
-          fios: List.generate(30, (i) => FioExecucao(id: i, status: i < 10 ? 'C' : 'E')),
-        ),
-      ],
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+
+    _timer = Timer.periodic(
+        const Duration(seconds: 5), (_) => _carregar(silencioso: true));
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  // ============================================
+  // busca fila e histórico na API
+  // silencioso = atualização automática, se falhar, mantém
+  // ============================================
+  Future<void> _carregar({bool silencioso = false}) async {
+    if (_buscando) return;
+    _buscando = true;
+
+    if (!silencioso) {
+      setState(() {
+        _carregando = true;
+        _erro = null;
+      });
+    }
+
+    try {
+      final respostas = await Future.wait([
+        ApiService.instance.get('/execucoes/fila'),
+        ApiService.instance.get('/execucoes/historico'),
+      ]);
+
+      final fila = (respostas[0] as List)
+          .map((j) => ExecucaoCorte.fromJson(j as Map<String, dynamic>))
+          .toList();
+
+      final abertas = _historico.where((h) => h.expandido).map((h) => h.idPeca).toSet();
+
+      final historico = (respostas[1] as List).map((j) {
+        final item = HistoricoPeca.fromJson(j as Map<String, dynamic>);
+        item.expandido = abertas.contains(item.idPeca);
+        return item;
+      }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _fila = fila;
+        _historico = historico;
+        _erro = null;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (!silencioso) setState(() => _erro = e.mensagem);
+    } finally {
+      _buscando = false;
+      if (mounted && !silencioso) setState(() => _carregando = false);
+    }
+  }
+  
+  Future<void> _abrirNovoCorte() async {
+    final enviou = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const NovoCorteScreen()),
+    );
+
+    if (enviou == true) _carregar(silencioso: true);
+  }
+
+  Future<void> _abrirDetalhes(ExecucaoCorte exec) async {
+    try {
+      final resposta = await ApiService.instance
+          .get('/execucoes/${exec.id}/detalhes') as Map<String, dynamic>;
+
+      final logs = [
+        for (final f in (resposta['fios'] as List))
+          if (f['mensagem'] != null)
+            LogFio(idFio: f['id_fio'] as int, mensagem: f['mensagem'] as String),
+      ];
+
+      if (!mounted) return;
+
+      ModalDetalhesCorte.mostrar(
+        context,
+        execucao: exec,
+        logs: logs,
+        retentando: resposta['retentando'] == true,
+        aoRetentar: () => _retentar(exec),
+      );
+    } on ApiException catch (e) {
+      _mostrarAviso(e.mensagem);
+    }
+  }
+
+  Future<void> _retentar(ExecucaoCorte exec) async {
+    try {
+      await ApiService.instance.post('/execucoes/${exec.id}/retentar');
+      _mostrarAviso('Retentativa enviada para a máquina!');
+      _carregar(silencioso: true);
+    } on ApiException catch (e) {
+      _mostrarAviso(e.mensagem);
+    }
+  }
+
+  void _mostrarAviso(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
+  }
 
   // formata o tempo decorrido
   String _tempoDecorrido(DateTime? inicio) {
@@ -178,21 +244,29 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Column(
-        children: [
-          BotaoNovoCorte(
-            aoTocar: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NovoCorteScreen()),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildSecaoFila(),
-          const SizedBox(height: 16),
-          _buildSecaoHistorico(),
-        ],
+    if (_carregando) {
+      return Center(child: CircularProgressIndicator(color: AppColors.green));
+    }
+
+    if (_erro != null) {
+      return EstadoErro(mensagem: _erro!, aoTentarNovamente: _carregar);
+    }
+
+    return RefreshIndicator(
+      color: AppColors.green,
+      onRefresh: () => _carregar(silencioso: true),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          children: [
+            BotaoNovoCorte(aoTocar: _abrirNovoCorte),
+            const SizedBox(height: 16),
+            _buildSecaoFila(),
+            const SizedBox(height: 16),
+            _buildSecaoHistorico(),
+          ],
+        ),
       ),
     );
   }
@@ -276,7 +350,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${exec.quantidade} cortes de ${exec.metragem.toStringAsFixed(0)} metros',
+                  '${exec.quantidade} cortes de ${_formatarMetros(exec.metragem)} metros',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -310,11 +384,11 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
             const SizedBox(height: 6),
 
             Text(
-              'Metragem cortada: ${exec.metragemCortada.toStringAsFixed(0)}m',
+              'Metragem cortada: ${_formatarMetros(exec.metragemCortada)}m',
               style: TextStyle(fontSize: 12, color: AppColors.textoPreto),
             ),
             Text(
-              'Metragem restante: ${exec.metragemRestante.toStringAsFixed(0)}m',
+              'Metragem restante: ${_formatarMetros(exec.metragemRestante)}m',
               style: TextStyle(fontSize: 12, color: AppColors.textoPreto),
             ),
             Text(
@@ -470,7 +544,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${exec.quantidade} cortes de ${exec.metragem.toStringAsFixed(0)} metros',
+                              '${exec.quantidade} cortes de ${_formatarMetros(exec.metragem)} metros',
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textoPreto),
                             ),
                             Text(
@@ -484,14 +558,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
                       // ícone de alerta se tiver fio com erro
                       if (exec.fios.any((f) => f.status == 'E'))
                         GestureDetector(
-                          onTap: () => ModalDetalhesCorte.mostrar(
-                            context,
-                            execucao: exec,
-                            logs: [], // TODO: passar logs reais
-                            aoRetentar: () {
-                              // TODO: criar RETENTATIVA + EXECUCAO_CORTE
-                            },
-                          ),
+                          onTap: () => _abrirDetalhes(exec),
                           child: Icon(Icons.warning_amber_rounded,
                             color: const Color.fromARGB(255, 117, 17, 2), size: 20),
                         ),

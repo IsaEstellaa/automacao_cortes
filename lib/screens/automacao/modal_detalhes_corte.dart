@@ -9,12 +9,12 @@ import 'automacao_content.dart';
 class LogFio {
   final int idFio;
   final String mensagem;
-  final DateTime dataHora;
+  final DateTime? dataHora;
 
   LogFio({
     required this.idFio,
     required this.mensagem,
-    required this.dataHora,
+    this.dataHora,
   });
 }
 
@@ -27,6 +27,7 @@ class ModalDetalhesCorte {
     required ExecucaoCorte execucao,
     required List<LogFio> logs,
     required VoidCallback aoRetentar,
+    bool retentando = false,
   }) {
     showDialog(
       context: context,
@@ -136,7 +137,17 @@ class ModalDetalhesCorte {
 
                   // botão retentar
                   // só aparece se tiver fio com erro!!
-                  if (execucao.fios.any((f) => f.status == 'E'))
+                  if (retentando)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Center(
+                        child: Text(
+                          'Retentativa em andamento...',
+                          style: TextStyle(fontSize: 13, color: AppColors.textoMarrom),
+                        ),
+                      ),
+                    ),
+                  if (execucao.fios.any((f) => f.status == 'E') && !retentando)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
