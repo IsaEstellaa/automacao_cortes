@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
+import '../../core/services/api_service.dart';
+import '../../core/widgets/estado_erro.dart';
 
 // icone da notificacao
 enum TipoNotificacao {
@@ -9,18 +11,60 @@ enum TipoNotificacao {
   info,     // ícone de informação
 }
 
+String _tituloDoTipo(String tipo) {
+  switch (tipo) {
+    case 'S':
+      return 'Sucesso';
+    case 'E':
+      return 'Erro';
+    case 'A':
+      return 'Alerta';
+    case 'I':
+      return 'Informação';
+    default:
+      return 'Notificação';
+  }
+}
+
+TipoNotificacao _tipoDoCodigo(String tipo) {
+  switch (tipo) {
+    case 'S':
+      return TipoNotificacao.maquina;
+    case 'E':
+    case 'A':
+      return TipoNotificacao.alerta;
+    default:
+      return TipoNotificacao.info;
+  }
+}
+
 class Notificacao {
+  final int id;
   final String titulo;
   final String descricao;
   final TipoNotificacao tipo;
   bool visto;
 
   Notificacao({
+    required this.id,
     required this.titulo,
     required this.descricao,
     required this.tipo,
     this.visto = false,
   });
+
+  // monta a notificação a partir do JSON
+  factory Notificacao.fromJson(Map<String, dynamic> json) {
+    final tipo = json['tipo'] as String;
+
+    return Notificacao(
+      id: json['id_notificacao'] as int,
+      titulo: _tituloDoTipo(tipo),
+      descricao: json['mensagem'] as String,
+      tipo: _tipoDoCodigo(tipo),
+      visto: json['visualizada'] == 'S',
+    );
+  }
 }
 
 class NotificacoesContent extends StatefulWidget {
@@ -31,24 +75,69 @@ class NotificacoesContent extends StatefulWidget {
 }
 
 class _NotificacoesContentState extends State<NotificacoesContent> {
-  // TODO: Fazer funcionar
-  final List<Notificacao> _notificacoes = [
-    Notificacao(
-      titulo: 'Corte finalizado',
-      descricao: 'Seu corte de 40 fios foi concluído!',
-      tipo: TipoNotificacao.maquina,
-    ),
-    Notificacao(
-      titulo: 'Corte não finalizado',
-      descricao: 'Seu corte não foi finalizado!',
-      tipo: TipoNotificacao.alerta,
-    ),
-    Notificacao(
-      titulo: 'Atualização disponível',
-      descricao: 'Uma nova versão do app está disponível.',
-      tipo: TipoNotificacao.info,
-    ),
-  ];
+    List<Notificacao> _notificacoes = [];
+  bool _carregando = true;
+  String? _erro;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  Future<void> _carregar({bool recarga = false}) async {
+    if (!recarga) {
+      setState(() {
+        _carregando = true;
+        _erro = null;
+      });
+    }
+
+    try {
+      final resposta = await ApiService.instance.get('/notificacoes') as List;
+      final lista = resposta
+          .map((j) => Notificacao.fromJson(j as Map<String, dynamic>))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _notificacoes = lista;
+        _erro = null;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (recarga) {
+        _mostrarAviso(e.mensagem);
+      } else {
+        setState(() => _erro = e.mensagem);
+      }
+    } finally {
+      if (mounted && !recarga) setState(() => _carregando = false);
+    }
+  }
+
+  Future<void> _alternarVisto(Notificacao notificacao) async {
+    final novoValor = !notificacao.visto;
+    setState(() => notificacao.visto = novoValor);
+
+    try {
+      await ApiService.instance.patch(
+        '/notificacoes/${notificacao.id}/visualizada',
+        {'visualizada': novoValor},
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => notificacao.visto = !novoValor);
+      _mostrarAviso(e.mensagem);
+    }
+  }
+
+  void _mostrarAviso(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
+  }
 
   IconData _iconeDoTipo(TipoNotificacao tipo) {
     switch (tipo) {
@@ -63,14 +152,36 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
 
   @override
   Widget build(BuildContext context) {
-    return _notificacoes.isEmpty
-        ? _buildVazia()
-        : ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            itemCount: _notificacoes.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, index) => _buildCard(_notificacoes[index]),
-          );
+    if (_carregando) {
+      return Center(child: CircularProgressIndicator(color: AppColors.green));
+    }
+
+    if (_erro != null) {
+      return EstadoErro(mensagem: _erro!, aoTentarNovamente: _carregar);
+    }
+
+    // recarrega quando puxa para baixo
+    return RefreshIndicator(
+      color: AppColors.green,
+      onRefresh: () => _carregar(recarga: true),
+      child: _notificacoes.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  child: _buildVazia(),
+                ),
+              ],
+            )
+          : ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              itemCount: _notificacoes.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, index) => _buildCard(_notificacoes[index]),
+            ),
+    );
   }
 
   // ============================================
@@ -163,9 +274,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
 
             // botão de marcar como visto
             IconButton(
-              onPressed: () {
-                setState(() => notificacao.visto = !notificacao.visto);
-              },
+              onPressed: () => _alternarVisto(notificacao),
               icon: Icon(
                 visto ? Icons.check_circle : Icons.check_circle_outline,
                 color: AppColors.green,
