@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/notificacoes_contador.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/titulo_banner.dart';
@@ -17,8 +19,44 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _indiceSelecionado = 2;
+
+  Timer? _timerContador;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    NotificacoesContador.instance.zerar();
+    NotificacoesContador.instance.atualizar();
+    _iniciarTimerContador();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timerContador?.cancel();
+    super.dispose();
+  }
+
+  void _iniciarTimerContador() {
+    _timerContador?.cancel();
+    _timerContador = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => NotificacoesContador.instance.atualizar(),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificacoesContador.instance.atualizar();
+      _iniciarTimerContador();
+    } else if (state == AppLifecycleState.paused) {
+      _timerContador?.cancel();
+    }
+  }
 
   Widget _buildTela() {
     switch (_indiceSelecionado) {

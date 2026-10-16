@@ -39,11 +39,20 @@ TipoNotificacao _tipoDoCodigo(String tipo) {
   }
 }
 
+const _meses = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+
+String _formatarDia(DateTime dia) =>
+    '${dia.day} de ${_meses[dia.month - 1]} de ${dia.year}';
+
 class Notificacao {
   final int id;
   final String titulo;
   final String descricao;
   final TipoNotificacao tipo;
+  final DateTime data;
   bool visto;
 
   Notificacao({
@@ -51,11 +60,11 @@ class Notificacao {
     required this.titulo,
     required this.descricao,
     required this.tipo,
+    required this.data,
     this.visto = false,
   });
 
-  // monta a notificação a partir do JSON
-    factory Notificacao.fromJson(Map<String, dynamic> json) {
+  factory Notificacao.fromJson(Map<String, dynamic> json) {
     final tipo = json['tipo'] as String;
     final titulo = json['titulo'] as String?;
 
@@ -64,6 +73,7 @@ class Notificacao {
       titulo: (titulo == null || titulo.trim().isEmpty) ? _tituloDoTipo(tipo) : titulo,
       descricao: json['mensagem'] as String,
       tipo: _tipoDoCodigo(tipo),
+      data: DateTime.parse(json['data_cadastro'] as String).toLocal(),
       visto: json['visualizada'] == 'S',
     );
   }
@@ -77,7 +87,7 @@ class NotificacoesContent extends StatefulWidget {
 }
 
 class _NotificacoesContentState extends State<NotificacoesContent> {
-    List<Notificacao> _notificacoes = [];
+  List<Notificacao> _notificacoes = [];
   bool _carregando = true;
   String? _erro;
 
@@ -156,6 +166,46 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
     }
   }
 
+  // lista vem da mais nova para a mais antiga
+  List<Object> _montarItens() {
+    final itens = <Object>[];
+    DateTime? diaAtual;
+
+    for (final n in _notificacoes) {
+      final dia = DateTime(n.data.year, n.data.month, n.data.day);
+      if (diaAtual != dia) {
+        itens.add(dia);
+        diaAtual = dia;
+      }
+      itens.add(n);
+    }
+
+    return itens;
+  }
+
+  Widget _buildSeparadorDia(DateTime dia) {
+    return Opacity(
+      opacity: 0.5,
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: AppColors.green, thickness: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              _formatarDia(dia),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.green,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: AppColors.green, thickness: 1)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_carregando) {
@@ -166,6 +216,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
       return EstadoErro(mensagem: _erro!, aoTentarNovamente: _carregar);
     }
 
+    final itens = _montarItens();
     // recarrega quando puxa para baixo
     return RefreshIndicator(
       color: AppColors.green,
@@ -183,9 +234,13 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
           : ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              itemCount: _notificacoes.length,
+              itemCount: itens.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, index) => _buildCard(_notificacoes[index]),
+              itemBuilder: (_, index) {
+                final item = itens[index];
+                if (item is DateTime) return _buildSeparadorDia(item);
+                return _buildCard(item as Notificacao);
+              },
             ),
     );
   }
