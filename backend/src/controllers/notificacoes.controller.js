@@ -42,28 +42,23 @@ const contar = async (req, res) => {
 };
 
 // ============================================
-// marcar uma notificação como vista (ou não vista)
+// marcar uma notificação como vista
 // ============================================
 const marcarVisualizada = async (req, res) => {
   const id = Number(req.params.id);
-  const { visualizada } = req.body;
 
   if (!Number.isInteger(id)) {
     return res.status(400).json({ erro: 'Id da notificação inválido!' });
   }
 
-  if (typeof visualizada !== 'boolean') {
-    return res.status(400).json({ erro: 'Informe visualizada como true ou false!' });
-  }
-
   try {
     const resultado = await pool.query(
       `UPDATE NOTIFICACOES
-       SET VISUALIZADA = $1,
-           HORA_VISUALIZACAO = CASE WHEN $2::boolean THEN NOW() ELSE NULL END
-       WHERE ID_NOTIFICACAO = $3 AND ID_USUARIO = $4
+       SET VISUALIZADA = 'S',
+           HORA_VISUALIZACAO = CASE WHEN VISUALIZADA = 'S' THEN HORA_VISUALIZACAO ELSE NOW() END
+       WHERE ID_NOTIFICACAO = $1 AND ID_USUARIO = $2
        RETURNING *`,
-      [visualizada ? 'S' : 'N', visualizada, id, req.usuarioId]
+      [id, req.usuarioId]
     );
 
     if (resultado.rows.length === 0) {

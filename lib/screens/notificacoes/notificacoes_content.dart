@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/estado_erro.dart';
+import '../../core/services/notificacoes_contador.dart';
 
 // icone da notificacao
 enum TipoNotificacao {
@@ -54,12 +55,13 @@ class Notificacao {
   });
 
   // monta a notificação a partir do JSON
-  factory Notificacao.fromJson(Map<String, dynamic> json) {
+    factory Notificacao.fromJson(Map<String, dynamic> json) {
     final tipo = json['tipo'] as String;
+    final titulo = json['titulo'] as String?;
 
     return Notificacao(
       id: json['id_notificacao'] as int,
-      titulo: _tituloDoTipo(tipo),
+      titulo: (titulo == null || titulo.trim().isEmpty) ? _tituloDoTipo(tipo) : titulo,
       descricao: json['mensagem'] as String,
       tipo: _tipoDoCodigo(tipo),
       visto: json['visualizada'] == 'S',
@@ -104,6 +106,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
         _notificacoes = lista;
         _erro = null;
       });
+      NotificacoesContador.instance.atualizar();
     } on ApiException catch (e) {
       if (!mounted) return;
       if (recarga) {
@@ -116,18 +119,21 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
     }
   }
 
-  Future<void> _alternarVisto(Notificacao notificacao) async {
-    final novoValor = !notificacao.visto;
-    setState(() => notificacao.visto = novoValor);
+  Future<void> _marcarComoVisto(Notificacao notificacao) async {
+    if (notificacao.visto) return;
+
+    setState(() => notificacao.visto = true);
+    NotificacoesContador.instance.diminuir();
 
     try {
       await ApiService.instance.patch(
         '/notificacoes/${notificacao.id}/visualizada',
-        {'visualizada': novoValor},
+        {},
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() => notificacao.visto = !novoValor);
+      setState(() => notificacao.visto = false);
+      NotificacoesContador.instance.atualizar();
       _mostrarAviso(e.mensagem);
     }
   }
@@ -274,7 +280,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
 
             // botão de marcar como visto
             IconButton(
-              onPressed: () => _alternarVisto(notificacao),
+              onPressed: notificacao.visto ? null : () => _marcarComoVisto(notificacao),
               icon: Icon(
                 visto ? Icons.check_circle : Icons.check_circle_outline,
                 color: AppColors.green,
