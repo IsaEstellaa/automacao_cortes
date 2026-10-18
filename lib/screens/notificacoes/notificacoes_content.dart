@@ -44,8 +44,18 @@ const _meses = [
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
 
-String _formatarDia(DateTime dia) =>
-    '${dia.day} de ${_meses[dia.month - 1]} de ${dia.year}';
+String _formatarDia(DateTime dia) {
+  final agora = DateTime.now();
+
+  final hoje = DateTime.utc(agora.year, agora.month, agora.day);
+  final alvo = DateTime.utc(dia.year, dia.month, dia.day);
+  final diferenca = hoje.difference(alvo).inDays;
+
+  if (diferenca == 0) return 'Hoje';
+  if (diferenca == 1) return 'Ontem';
+
+  return '${dia.day} de ${_meses[dia.month - 1]} de ${dia.year}';
+}
 
 class Notificacao {
   final int id;
