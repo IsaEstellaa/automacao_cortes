@@ -71,7 +71,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case 4:
         return _buildPaginaComTitulo(
           'Configurações',
-          ConfiguracoesContent(aoAtualizarPerfil: () => setState(() {})),
+          ConfiguracoesContent(
+            aoAtualizarPerfil: () => setState(() {}),
+            aoAbrirNotificacoes: () => setState(() => _indiceSelecionado = 3),
+          ),
         );
       default:
         return _placeholder('Home');

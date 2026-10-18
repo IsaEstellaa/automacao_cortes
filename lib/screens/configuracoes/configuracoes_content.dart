@@ -8,7 +8,12 @@ import 'editar_perfil_screen.dart';
 
 class ConfiguracoesContent extends StatelessWidget {
   final VoidCallback? aoAtualizarPerfil;
-  const ConfiguracoesContent({super.key, this.aoAtualizarPerfil});
+  final VoidCallback? aoAbrirNotificacoes;
+  const ConfiguracoesContent({
+    super.key,
+    this.aoAtualizarPerfil,
+    this.aoAbrirNotificacoes,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,9 +36,7 @@ class ConfiguracoesContent extends StatelessWidget {
             context,
             icone: Icons.notifications,
             titulo: 'Notificações',
-            aoTocar: () {
-              // TODO: navegar para tela de notificações
-            },
+            aoTocar: () => aoAbrirNotificacoes?.call(),
           ),
           const SizedBox(height: 15),
           _buildItemMenu(
