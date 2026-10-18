@@ -4,9 +4,11 @@ import '../../core/widgets/painters.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import '../login/login_screen.dart';
+import 'editar_perfil_screen.dart';
 
 class ConfiguracoesContent extends StatelessWidget {
-  const ConfiguracoesContent({super.key});
+  final VoidCallback? aoAtualizarPerfil;
+  const ConfiguracoesContent({super.key, this.aoAtualizarPerfil});
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +69,7 @@ class ConfiguracoesContent extends StatelessWidget {
   // cardzinho do perfil
   // ============================================
   Widget _buildCardPerfil(BuildContext context) {
+    final descricao = (ApiService.instance.usuario?['descricao'] as String?)?.trim() ?? '';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -128,10 +131,16 @@ class ConfiguracoesContent extends StatelessWidget {
                 const SizedBox(height: 4),
 
                 Text(
-                  'Lorem ipsum dolor sit its panamet, consectetur adipiscing elit. Mauris pellentesque. Suspendisse id cursus massa, blandit consectetur una.', // TODO: bio real
+                  descricao.isEmpty
+                      ? 'Toque no lápis para adicionar uma descrição.'
+                      : descricao,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textoPreto,
+                    color: descricao.isEmpty
+                        ? AppColors.textoPreto.withOpacity(0.5)
+                        : AppColors.textoPreto,
                     height: 1.4,
                   ),
                 ),
@@ -141,8 +150,12 @@ class ConfiguracoesContent extends StatelessWidget {
 
           // ícone de editar
           GestureDetector(
-            onTap: () {
-              // TODO: navegar para tela de editar perfil
+            onTap: () async {
+              final salvou = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => const EditarPerfilScreen()),
+              );
+              if (salvou == true) aoAtualizarPerfil?.call();
             },
             child: Icon(
               Icons.edit_outlined,

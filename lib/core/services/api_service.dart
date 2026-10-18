@@ -66,6 +66,10 @@ class ApiService {
     await _storage.delete(key: _chaveToken);
   }
 
+  void atualizarUsuario(Map<String, dynamic> dados) {
+    usuario = {...?usuario, ...dados};
+  }
+
   // Retorna true se já existe uma sessão válida.
   Future<bool> restaurarSessao() async {
     try {

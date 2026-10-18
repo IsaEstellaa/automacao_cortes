@@ -1,5 +1,8 @@
 const { Pool, types } = require('pg');
 
+// "2000-05-17", sem fuso
+types.setTypeParser(1082, (valor) => valor);
+
 types.setTypeParser(1114, (valor) => new Date(valor.replace(' ', 'T') + 'Z'));
 require("dotenv").config();
 

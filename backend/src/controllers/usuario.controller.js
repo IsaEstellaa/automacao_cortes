@@ -135,4 +135,93 @@ const buscarPerfil = async (req, res) => {
   }
 };
 
-module.exports = { cadastrar, login, buscarPerfil };
+// ============================================
+// atualizar perfil: nome, descrição, telefone, data de nascimento e sexo
+// ============================================
+const SEXOS = ['F', 'M', 'O'];
+
+const dataValida = (texto) => {
+  if (typeof texto !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
+
+  const [ano, mes, dia] = texto.split('-').map(Number);
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+
+  if (
+    data.getUTCFullYear() !== ano ||
+    data.getUTCMonth() !== mes - 1 ||
+    data.getUTCDate() !== dia
+  ) {
+    return false;
+  }
+
+  return ano >= 1900 && data <= new Date();
+};
+
+const atualizarPerfil = async (req, res) => {
+  const { nome, descricao, telefone, data_nasc, sexo } = req.body;
+
+  const nomeLimpo = typeof nome === 'string' ? nome.trim() : '';
+  if (nomeLimpo.length < 2 || nomeLimpo.length > 100) {
+    return res.status(400).json({ erro: 'O nome deve ter entre 2 e 100 caracteres!' });
+  }
+
+  let descricaoFinal = null;
+  if (descricao !== undefined && descricao !== null) {
+    if (typeof descricao !== 'string') {
+      return res.status(400).json({ erro: 'Descrição inválida!' });
+    }
+    descricaoFinal = descricao.trim() || null;
+    if (descricaoFinal && descricaoFinal.length > 300) {
+      return res.status(400).json({ erro: 'A descrição pode ter no máximo 300 caracteres!' });
+    }
+  }
+
+  let telefoneFinal = null;
+  if (telefone !== undefined && telefone !== null && telefone !== '') {
+    const digitos = typeof telefone === 'string' ? telefone.replace(/\D/g, '') : '';
+    if (digitos.length < 10 || digitos.length > 11) {
+      return res.status(400).json({ erro: 'Telefone inválido! Informe o DDD e o número.' });
+    }
+    telefoneFinal = digitos;
+  }
+
+  let dataFinal = null;
+  if (data_nasc !== undefined && data_nasc !== null && data_nasc !== '') {
+    if (!dataValida(data_nasc)) {
+      return res.status(400).json({ erro: 'Data de nascimento inválida!' });
+    }
+    dataFinal = data_nasc;
+  }
+
+  let sexoFinal = null;
+  if (sexo !== undefined && sexo !== null && sexo !== '') {
+    if (!SEXOS.includes(sexo)) {
+      return res.status(400).json({ erro: 'Sexo inválido!' });
+    }
+    sexoFinal = sexo;
+  }
+
+  try {
+    const resultado = await pool.query(
+      `UPDATE USUARIO
+       SET NOME = $1, DESCRICAO = $2, TELEFONE = $3, DATA_NASC = $4, SEXO = $5,
+           ULTIMA_MODIFICACAO = NOW()
+       WHERE ID_USUARIO = $6 AND SITUACAO = 'A'
+       RETURNING ID_USUARIO, NOME, EMAIL, DESCRICAO, TELEFONE,
+                 DATA_NASC, SEXO, URL_FOTO, DATA_CADASTRO`,
+      [nomeLimpo, descricaoFinal, telefoneFinal, dataFinal, sexoFinal, req.usuarioId]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ erro: 'Usuário não encontrado!' });
+    }
+
+    return res.status(200).json(resultado.rows[0]);
+
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+};
+
+module.exports = { cadastrar, login, buscarPerfil, atualizarPerfil };
