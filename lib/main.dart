@@ -1,8 +1,25 @@
 import 'package:flutter/material.dart';
-// import 'screens/cadastro/cadastro_screen.dart';
 import 'screens/splash/splash_screen.dart';
+import 'core/services/api_service.dart';
+import 'screens/login/login_screen.dart';
+
+final navigatorKey = GlobalKey<NavigatorState>();
+final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
 void main() {
+  // se o servidor recusar o token com o app em uso (sessão expirada),
+  // limpa a pilha de telas, volta para o login e avisa
+  ApiService.instance.aoSessaoExpirada = () {
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+
+    messengerKey.currentState?.showSnackBar(
+      const SnackBar(content: Text('Sua sessão expirou. Entre novamente.')),
+    );
+  };
+
   runApp(const MyApp());
 }
 
@@ -35,6 +52,8 @@ class MyApp extends StatelessWidget {
       ),
       // home: const MyHomePage(title: 'Flutter Demo Home Page'),
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
+      scaffoldMessengerKey: messengerKey,
       home: const SplashScreen(),
     );
   }

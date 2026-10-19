@@ -28,6 +28,10 @@ class ApiService {
   String? _token;
   Map<String, dynamic>? usuario;
 
+  // chamado quando o servidor recusa o token com o app em uso (sessão expirada)
+  void Function()? aoSessaoExpirada;
+  bool _restaurando = false;
+
   bool get logado => _token != null;
 
   // ============================================
@@ -72,6 +76,7 @@ class ApiService {
 
   // Retorna true se já existe uma sessão válida.
   Future<bool> restaurarSessao() async {
+    _restaurando = true;
     try {
       final token = await _storage.read(key: _chaveToken);
 
@@ -92,6 +97,8 @@ class ApiService {
       _token = null;
       usuario = null;
       return false;
+    } finally {
+      _restaurando = false;
     }
   }
 
@@ -139,6 +146,7 @@ class ApiService {
     Map<String, dynamic>? corpo,
   ]) async {
     final requisicao = http.Request(metodo, Uri.parse('$baseUrl$caminho'));
+    final tokenUsado = _token;
 
     requisicao.headers['Content-Type'] = 'application/json';
     if (_token != null) {
@@ -160,8 +168,13 @@ class ApiService {
         return dados;
       }
 
-      if (resposta.statusCode == 401 && _token != null) {
+      if (resposta.statusCode == 401 && tokenUsado != null && tokenUsado == _token) {
         await logout();
+
+        if (!_restaurando) {
+          aoSessaoExpirada?.call();
+          throw ApiException('Sua sessão expirou. Entre novamente.', 401);
+        }
       }
 
       final mensagem = (dados is Map && dados['erro'] != null)
