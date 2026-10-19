@@ -177,12 +177,65 @@ const buscarExecucoes = async (idUsuario, situacoes, ordem) => {
 };
 
 // ============================================
+// retentativas em andamento
+// ============================================
+const buscarRetentativasPendentes = async (idUsuario) => {
+  const resultado = await pool.query(
+    `SELECT R.ID_RETENTATIVA, R.ID_EXECUCAO, R.ID_FIO, R.SITUACAO,
+            R.DATA_CADASTRO, R.DATA_INICIO,
+            C.METRAGEM,
+            P.ID_PECA, P.NOME AS NOME_PECA,
+            M.NOME AS NOME_MATERIAL
+     FROM RETENTATIVA R
+     JOIN EXECUCAO_CORTE E ON E.ID_EXECUCAO = R.ID_EXECUCAO
+     JOIN CORTE C ON C.ID_CORTE = E.ID_CORTE
+     JOIN PECA P ON P.ID_PECA = C.ID_PECA
+     JOIN MATERIAL M ON M.ID_MATERIAL = E.ID_MATERIAL
+     WHERE P.ID_USUARIO = $1
+       AND (R.ID_EXECUCAO, R.DATA_CADASTRO) IN (
+         SELECT ID_EXECUCAO, DATA_CADASTRO FROM RETENTATIVA WHERE SITUACAO = 'P'
+       )
+     ORDER BY R.DATA_CADASTRO, R.ID_RETENTATIVA`,
+    [idUsuario]
+  );
+
+  const lotes = new Map();
+
+  for (const r of resultado.rows) {
+    const chave = `${r.id_execucao}|${new Date(r.data_cadastro).getTime()}`;
+    if (!lotes.has(chave)) lotes.set(chave, []);
+    lotes.get(chave).push(r);
+  }
+
+  return [...lotes.values()].map((lote) => {
+    const primeira = lote[0];
+    const inicios = lote.filter((r) => r.data_inicio).map((r) => new Date(r.data_inicio).getTime());
+
+    return {
+      id_execucao: primeira.id_execucao,
+      retentativa: true,
+      id_peca: primeira.id_peca,
+      nome_peca: primeira.nome_peca,
+      nome_material: primeira.nome_material,
+      metragem: primeira.metragem,
+      quantidade: lote.length,
+      situacao: inicios.length > 0 ? 'P' : 'A',
+      data_cadastro: primeira.data_cadastro,
+      data_inicio: inicios.length > 0 ? new Date(Math.min(...inicios)) : null,
+      data_fim: null,
+      fios: lote.map((r) => ({ id_fio: r.id_fio, status: r.situacao })),
+    };
+  });
+};
+
+// ============================================
 // listar fila (aguardando e processando, FIFO)
 // ============================================
 const listarFila = async (req, res) => {
   try {
     const fila = await buscarExecucoes(req.usuarioId, ['A', 'P'], 'E.ID_EXECUCAO');
-    return res.status(200).json(fila);
+    const retentativas = await buscarRetentativasPendentes(req.usuarioId);
+    return res.status(200).json([...fila, ...retentativas]);
 
   } catch (err) {
     console.error(err.message);

@@ -41,6 +41,7 @@ class ExecucaoCorte {
   final String situacao; // A=aguardando, P=processando, C=concluído, E=com erro
   final DateTime? dataInicio;
   final DateTime? dataFim;
+  final bool retentativa; // true = fios sendo refeitos (não um corte novo)
 
   ExecucaoCorte({
     required this.id,
@@ -51,6 +52,7 @@ class ExecucaoCorte {
     required this.situacao,
     this.dataInicio,
     this.dataFim,
+    this.retentativa = false,
   });
 
   factory ExecucaoCorte.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class ExecucaoCorte {
       fios: (json['fios'] as List)
           .map((f) => FioExecucao.fromJson(f as Map<String, dynamic>))
           .toList(),
+      retentativa: json['retentativa'] == true,
     );
   }
 
@@ -346,11 +349,17 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
         children: [
           Row(
             children: [
-              Icon(Icons.content_cut_outlined, size: 20, color: AppColors.green),
+              Icon(
+                exec.retentativa ? Icons.replay : Icons.content_cut_outlined,
+                size: 20,
+                color: AppColors.green,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${exec.quantidade} cortes de ${_formatarMetros(exec.metragem)} metros',
+                  exec.retentativa
+                      ? 'Retentativa: ${exec.quantidade} ${exec.quantidade == 1 ? 'corte' : 'cortes'} de ${_formatarMetros(exec.metragem)} metros'
+                      : '${exec.quantidade} cortes de ${_formatarMetros(exec.metragem)} metros',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
