@@ -5,6 +5,7 @@ import '../../core/services/api_service.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import '../login/login_screen.dart';
 import 'editar_perfil_screen.dart';
+import 'ajuda_screen.dart';
 
 class ConfiguracoesContent extends StatelessWidget {
   final VoidCallback? aoAtualizarPerfil;
@@ -27,9 +28,10 @@ class ConfiguracoesContent extends StatelessWidget {
             context,
             icone: Icons.help_rounded,
             titulo: 'Ajuda',
-            aoTocar: () {
-              // TODO: navegar para tela de ajuda
-            },
+            aoTocar: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AjudaScreen()),
+            ),
           ),
           const SizedBox(height: 15),
           _buildItemMenu(
