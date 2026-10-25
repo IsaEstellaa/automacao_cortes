@@ -25,12 +25,12 @@ const cadastrar = async (req, res) => {
   }
 
   const nomeLimpo = nome.trim();
-  const emailLimpo = email.trim();
+  const emailLimpo = email.trim().toLowerCase();
 
   try {
     // verifica se o email já existe
     const emailExiste = await pool.query(
-      'SELECT ID_USUARIO FROM USUARIO WHERE EMAIL = $1',
+      'SELECT ID_USUARIO FROM USUARIO WHERE LOWER(EMAIL) = $1',
       [emailLimpo]
     );
 
@@ -61,7 +61,11 @@ const cadastrar = async (req, res) => {
 
     return res.status(201).json({ usuario, token });
 
-  } catch (err) {
+  } catch (err) { 
+    if (err.code === '23505') {
+      return res.status(400).json({ erro: 'Email já cadastrado!' });
+    }
+
     console.error(err.message);
     return res.status(500).json({ erro: 'Erro interno do servidor' });
   }
@@ -72,12 +76,13 @@ const cadastrar = async (req, res) => {
 // ============================================
 const login = async (req, res) => {
   const { email, senha } = req.body;
+  const emailLimpo = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
   try {
     // busca o usuário pelo email
     const resultado = await pool.query(
-      'SELECT * FROM USUARIO WHERE EMAIL = $1 AND SITUACAO = $2',
-      [email, 'A']
+      'SELECT * FROM USUARIO WHERE LOWER(EMAIL) = $1 AND SITUACAO = $2',
+      [emailLimpo, 'A']
     );
 
     if (resultado.rows.length === 0) {
