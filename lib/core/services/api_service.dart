@@ -140,25 +140,45 @@ class ApiService {
   // ============================================
   // envio e tratamento de erros
   // ============================================
-  Future<dynamic> _enviar(
+    Future<dynamic> _enviar(
     String metodo,
     String caminho, [
     Map<String, dynamic>? corpo,
-  ]) async {
+  ]) {
     final requisicao = http.Request(metodo, Uri.parse('$baseUrl$caminho'));
-    final tokenUsado = _token;
 
     requisicao.headers['Content-Type'] = 'application/json';
-    if (_token != null) {
-      requisicao.headers['Authorization'] = 'Bearer $_token';
-    }
     if (corpo != null) {
       requisicao.body = jsonEncode(corpo);
     }
 
+    return _executar(requisicao);
+  }
+
+  // envia um arquivo no formato multipart
+  Future<dynamic> enviarArquivo(
+    String caminho,
+    String campo,
+    String caminhoArquivo, {
+    String metodo = 'PUT',
+  }) async {
+    final requisicao = http.MultipartRequest(metodo, Uri.parse('$baseUrl$caminho'));
+    requisicao.files.add(await http.MultipartFile.fromPath(campo, caminhoArquivo));
+
+    // envio de arquivo pode demorar mais
+    return _executar(requisicao, limite: const Duration(seconds: 60));
+  }
+
+  Future<dynamic> _executar(http.BaseRequest requisicao, {Duration? limite}) async {
+    final tokenUsado = _token;
+
+    if (_token != null) {
+      requisicao.headers['Authorization'] = 'Bearer $_token';
+    }
+
     // TODO: Substituir as mensagens de erro
     try {
-      final stream = await requisicao.send().timeout(_timeout);
+      final stream = await requisicao.send().timeout(limite ?? _timeout);
       final resposta = await http.Response.fromStream(stream);
 
       final dados =
@@ -171,6 +191,7 @@ class ApiService {
       if (resposta.statusCode == 401 && tokenUsado != null && tokenUsado == _token) {
         await logout();
 
+        // sessão expirada com o app em uso: volta para o login
         if (!_restaurando) {
           aoSessaoExpirada?.call();
           throw ApiException('Sua sessão expirou. Entre novamente.', 401);

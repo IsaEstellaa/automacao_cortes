@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { detectarTipo, enviarFoto, removerFoto } = require('../services/storage.service');
 
 // ============================================
 // cadastro de usuário
@@ -229,4 +230,83 @@ const atualizarPerfil = async (req, res) => {
   }
 };
 
-module.exports = { cadastrar, login, buscarPerfil, atualizarPerfil };
+// ============================================
+// foto de perfil
+// ============================================
+const COLUNAS_PERFIL = `ID_USUARIO, NOME, EMAIL, DESCRICAO, TELEFONE,
+                        DATA_NASC, SEXO, URL_FOTO, DATA_CADASTRO`;
+
+const enviarFotoPerfil = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ erro: 'Envie uma foto no campo "foto"!' });
+  }
+
+  const tipo = detectarTipo(req.file.buffer);
+  if (!tipo) {
+    return res.status(400).json({ erro: 'Formato inválido! Use JPG, PNG ou WebP.' });
+  }
+
+  let urlNova = null;
+
+  try {
+    const atual = await pool.query(
+      `SELECT URL_FOTO FROM USUARIO WHERE ID_USUARIO = $1 AND SITUACAO = 'A'`,
+      [req.usuarioId]
+    );
+
+    if (atual.rows.length === 0) {
+      return res.status(404).json({ erro: 'Usuário não encontrado!' });
+    }
+
+    urlNova = await enviarFoto(`perfil/${req.usuarioId}`, req.file.buffer, tipo);
+
+    const resultado = await pool.query(
+      `UPDATE USUARIO
+       SET URL_FOTO = $1, ULTIMA_MODIFICACAO = NOW()
+       WHERE ID_USUARIO = $2
+       RETURNING ${COLUNAS_PERFIL}`,
+      [urlNova, req.usuarioId]
+    );
+
+    // só apaga a foto antiga depois de a nova estar gravada
+    await removerFoto(atual.rows[0].url_foto);
+
+    return res.status(200).json(resultado.rows[0]);
+
+  } catch (err) {
+    console.error(err.message);
+    if (urlNova) await removerFoto(urlNova);
+    return res.status(500).json({ erro: 'Não foi possível salvar a foto' });
+  }
+};
+
+const removerFotoPerfil = async (req, res) => {
+  try {
+    const atual = await pool.query(
+      `SELECT URL_FOTO FROM USUARIO WHERE ID_USUARIO = $1 AND SITUACAO = 'A'`,
+      [req.usuarioId]
+    );
+
+    if (atual.rows.length === 0) {
+      return res.status(404).json({ erro: 'Usuário não encontrado!' });
+    }
+
+    const resultado = await pool.query(
+      `UPDATE USUARIO
+       SET URL_FOTO = NULL, ULTIMA_MODIFICACAO = NOW()
+       WHERE ID_USUARIO = $1
+       RETURNING ${COLUNAS_PERFIL}`,
+      [req.usuarioId]
+    );
+
+    await removerFoto(atual.rows[0].url_foto);
+
+    return res.status(200).json(resultado.rows[0]);
+
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+};
+
+module.exports = { cadastrar, login, buscarPerfil, atualizarPerfil, enviarFotoPerfil, removerFotoPerfil };

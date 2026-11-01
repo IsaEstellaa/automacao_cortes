@@ -6,6 +6,7 @@ import '../../core/widgets/modal_confirmacao.dart';
 import '../login/login_screen.dart';
 import 'editar_perfil_screen.dart';
 import 'ajuda_screen.dart';
+import 'foto_perfil.dart';
 
 class ConfiguracoesContent extends StatelessWidget {
   final VoidCallback? aoAtualizarPerfil;
@@ -93,25 +94,7 @@ class ConfiguracoesContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // foto de perfil
-          ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(40),
-              topRight: Radius.circular(10),
-              bottomLeft: Radius.circular(10),
-              bottomRight: Radius.circular(40),
-            ),
-            child: Container(
-              width: 100,
-              height: 100,
-              color: AppColors.background,
-              child: Icon(
-                Icons.person_outline,
-                size: 48,
-                color: AppColors.green.withOpacity(0.4),
-              ),
-              // TODO: Fazerr a parte da foto
-            ),
-          ),
+          FotoPerfil(aoAtualizar: aoAtualizarPerfil),
           const SizedBox(width: 12),
 
           // nome e descrição
