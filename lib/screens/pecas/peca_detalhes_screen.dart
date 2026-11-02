@@ -6,6 +6,7 @@ import '../../core/widgets/modal_confirmacao.dart';
 import 'nova_peca_screen.dart';
 import 'pecas_content.dart';
 import '../../core/services/api_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 class PecaDetalhesScreen extends StatefulWidget {
   final Peca peca;
@@ -18,6 +19,129 @@ class PecaDetalhesScreen extends StatefulWidget {
 
 class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
   int _fotoAtual = 0;
+  final _pageController = PageController();
+  final _picker = ImagePicker();
+  bool _enviandoFoto = false;
+
+  static const int _maxFotos = 5;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _mostrarAviso(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
+  }
+
+  // ============================================
+  // fotos: escolher origem, enviar e remover
+  // ============================================
+  Future<void> _escolherOrigemFoto() async {
+    if (_enviandoFoto) return;
+
+    final origem = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.card,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.photo_camera_outlined, color: AppColors.green),
+              title: Text('Tirar foto', style: TextStyle(color: AppColors.textoPreto)),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library_outlined, color: AppColors.green),
+              title: Text('Escolher da galeria', style: TextStyle(color: AppColors.textoPreto)),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (origem != null) await _adicionarFoto(origem);
+  }
+
+  Future<void> _adicionarFoto(ImageSource origem) async {
+    XFile? arquivo;
+
+    try {
+      // já reduz a imagem antes de enviar
+      arquivo = await _picker.pickImage(
+        source: origem,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+    } catch (_) {
+      _mostrarAviso('Não foi possível abrir a câmera ou a galeria.');
+      return;
+    }
+
+    if (arquivo == null) return;
+
+    setState(() => _enviandoFoto = true);
+
+    try {
+      final resposta = await ApiService.instance.enviarArquivo(
+        '/pecas/${widget.peca.id}/fotos',
+        'foto',
+        arquivo.path,
+        metodo: 'POST',
+      ) as Map<String, dynamic>;
+
+      if (!mounted) return;
+      setState(() => widget.peca.fotos.add(FotoPeca.fromJson(resposta)));
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            widget.peca.fotos.length - 1,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    } on ApiException catch (e) {
+      _mostrarAviso(e.mensagem);
+    } finally {
+      if (mounted) setState(() => _enviandoFoto = false);
+    }
+  }
+
+  void _confirmarRemocaoFoto(FotoPeca foto) {
+    ModalConfirmacao.mostrar(
+      context,
+      titulo: 'Remover foto',
+      mensagem: 'Tem certeza que deseja remover esta foto?',
+      textoBotaoConfirmar: 'Remover',
+      aoConfirmar: () => _removerFoto(foto),
+      corBotao: AppColors.buttonRed,
+    );
+  }
+
+  Future<void> _removerFoto(FotoPeca foto) async {
+    try {
+      await ApiService.instance.delete('/pecas/${widget.peca.id}/fotos/${foto.id}');
+
+      if (!mounted) return;
+      setState(() {
+        widget.peca.fotos.removeWhere((f) => f.id == foto.id);
+        if (_fotoAtual >= widget.peca.fotos.length) {
+          _fotoAtual = widget.peca.fotos.isEmpty ? 0 : widget.peca.fotos.length - 1;
+        }
+      });
+    } on ApiException catch (e) {
+      _mostrarAviso(e.mensagem);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,72 +193,150 @@ class _PecaDetalhesScreenState extends State<PecaDetalhesScreen> {
   // carrossel de fotos
   // ============================================
   Widget _buildCarrossel() {
-    // se não tiver fotos, mostra placeholder
-    if (widget.peca.fotos.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: 200,
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(40),
-            topRight: Radius.circular(10),
-            bottomLeft: Radius.circular(10),
-            bottomRight: Radius.circular(40),
-          ),
-          border: Border.all(color: AppColors.bordaMarrom, width: 1),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_photo_alternate_outlined,
-                size: 48, color: AppColors.green.withOpacity(0.4)),
-            const SizedBox(height: 8),
-            Text(
-              'Nenhuma foto adicionada',
-              style: TextStyle(fontSize: 13, color: AppColors.green.withOpacity(0.4)),
+    final fotos = widget.peca.fotos;
+
+    if (fotos.isEmpty) {
+      return GestureDetector(
+        onTap: _escolherOrigemFoto,
+        child: Container(
+          width: double.infinity,
+          height: 200,
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(40),
+              topRight: Radius.circular(10),
+              bottomLeft: Radius.circular(10),
+              bottomRight: Radius.circular(40),
             ),
-          ],
+            border: Border.all(color: AppColors.bordaMarrom, width: 1),
+          ),
+          child: _enviandoFoto
+              ? Center(child: CircularProgressIndicator(color: AppColors.green))
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_photo_alternate_outlined,
+                        size: 48, color: AppColors.green.withOpacity(0.4)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Nenhuma foto adicionada',
+                      style: TextStyle(fontSize: 13, color: AppColors.green.withOpacity(0.4)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Toque para adicionar',
+                      style: TextStyle(fontSize: 12, color: AppColors.green.withOpacity(0.4)),
+                    ),
+                  ],
+                ),
         ),
       );
     }
 
+    final atual = _fotoAtual >= fotos.length ? fotos.length - 1 : _fotoAtual;
+
     return Column(
       children: [
-        // fotos
         SizedBox(
           height: 200,
-          child: PageView.builder(
-            itemCount: widget.peca.fotos.length,
-            onPageChanged: (i) => setState(() => _fotoAtual = i),
-            itemBuilder: (_, index) => ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                widget.peca.fotos[index],
-                fit: BoxFit.cover,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                itemCount: fotos.length,
+                onPageChanged: (i) => setState(() => _fotoAtual = i),
+                itemBuilder: (_, index) => ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    color: AppColors.card,
+                    child: Image.network(
+                      fotos[index].url,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Icon(Icons.broken_image_outlined,
+                            size: 40, color: AppColors.green.withOpacity(0.4)),
+                      ),
+                      loadingBuilder: (_, filho, progresso) => progresso == null
+                          ? filho
+                          : Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.green,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+
+              // remover a foto que está na tela
+              Positioned(
+                top: 8,
+                right: 8,
+                child: _botaoFlutuante(
+                  Icons.delete_outline,
+                  () => _confirmarRemocaoFoto(fotos[atual]),
+                ),
+              ),
+
+              // adicionar outra
+              if (fotos.length < _maxFotos)
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: _botaoFlutuante(Icons.add_a_photo_outlined, _escolherOrigemFoto),
+                ),
+
+              // carregando
+              if (_enviandoFoto)
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.35),
+                      child: const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
 
-        // indicador de página
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(widget.peca.fotos.length, (i) {
+          children: List.generate(fotos.length, (i) {
             return AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: i == _fotoAtual ? 16 : 8,
+              width: i == atual ? 16 : 8,
               height: 8,
               decoration: BoxDecoration(
-                color: i == _fotoAtual ? AppColors.green : AppColors.green.withOpacity(0.3),
+                color: i == atual ? AppColors.green : AppColors.green.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             );
           }),
         ),
       ],
+    );
+  }
+
+  Widget _botaoFlutuante(IconData icone, VoidCallback aoTocar) {
+    return GestureDetector(
+      onTap: aoTocar,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.45),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icone, size: 18, color: Colors.white),
+      ),
     );
   }
 

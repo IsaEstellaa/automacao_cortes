@@ -16,11 +16,25 @@ num _paraNumero(dynamic valor) {
   return n == n.truncate() ? n.truncate() : n;
 }
 
+class FotoPeca {
+  final int id;
+  final String url;
+
+  FotoPeca({required this.id, required this.url});
+
+  factory FotoPeca.fromJson(Map<String, dynamic> json) {
+    return FotoPeca(
+      id: json['id_foto'] as int,
+      url: json['url'] as String,
+    );
+  }
+}
+
 class Peca {
   final int id;
   final String nome;
   final String descricao;
-  final List<String> fotos; // URLs das fotos
+  final List<FotoPeca> fotos;
   bool favorito;
   final List<Map<String, dynamic>> cortes;
 
@@ -47,7 +61,9 @@ class Peca {
       id: json['id_peca'] as int,
       nome: json['nome'] as String,
       descricao: (json['descricao'] as String?) ?? '',
-      fotos: <String>[], // TODO: upload de fotos ainda não existe
+      fotos: ((json['fotos'] as List?) ?? [])
+        .map((f) => FotoPeca.fromJson(f as Map<String, dynamic>))
+        .toList(),
       cortes: cortes,
     );
   }
@@ -123,7 +139,11 @@ class _PecasContentState extends State<PecasContent> {
       MaterialPageRoute(builder: (_) => PecaDetalhesScreen(peca: peca)),
     );
 
-    if (mudou == true) _carregar();
+    if (mudou == true) {
+      _carregar();
+    } else if (mounted) {
+      setState(() {});
+    }
   }
 
   void _alternarFavorito(Peca peca) {

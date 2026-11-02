@@ -101,17 +101,49 @@ class PecaCard extends StatelessWidget {
               ),
             ),
 
-            // ícone da peça
+            // capa da peça: a primeira foto
             Expanded(
-              child: Center(
-                child: Icon(
-                  Icons.checkroom_outlined, // TODO: substituir pelo SVG da peça
-                  size: 64,
-                  color: AppColors.green,
-                ),
-              ),
+              child: peca.fotos.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Center(
+                        child: Icon(
+                          Icons.checkroom_outlined, // TODO: substituir pelo SVG da peça
+                          size: 64,
+                          color: AppColors.green,
+                        ),
+                      ),
+                    )
+                  : SizedBox.expand(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(9),
+                          bottomRight: Radius.circular(39),
+                        ),
+                        child: Image.network(
+                          peca.fotos.first.url,
+                          fit: BoxFit.cover,
+                          cacheWidth: 500,
+                          errorBuilder: (_, __, ___) => Center(
+                            child: Icon(
+                              Icons.checkroom_outlined,
+                              size: 64,
+                              color: AppColors.green,
+                            ),
+                          ),
+                          loadingBuilder: (_, filho, progresso) => progresso == null
+                              ? filho
+                              : Center(
+                                  child: Icon(
+                                    Icons.checkroom_outlined,
+                                    size: 64,
+                                    color: AppColors.green.withOpacity(0.3),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
             ),
-            const SizedBox(height: 8),
           ],
         ),
       ),

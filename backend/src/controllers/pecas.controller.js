@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const storage = require('../services/storage.service');
 
 // ============================================
 // validação dos cortes (usada no criar e no atualizar)
@@ -21,6 +22,29 @@ const validarCortes = (cortes) => {
 };
 
 // ============================================
+// fotos das peças
+// ============================================
+const MAX_FOTOS_PECA = 5;
+
+// fotos ativas, na ordem do envio (a primeira é a capa)
+const buscarFotos = async (db, idsPecas) => {
+  const resultado = await db.query(
+    `SELECT ID_FOTO, ID_PECA, URL_PECA
+     FROM FOTOS_PECA
+     WHERE ID_PECA = ANY($1) AND SITUACAO = 'A'
+     ORDER BY ID_FOTO`,
+    [idsPecas]
+  );
+
+  return resultado.rows;
+};
+
+const formatarFotos = (linhas, idPeca) =>
+  linhas
+    .filter((f) => f.id_peca === idPeca)
+    .map((f) => ({ id_foto: f.id_foto, url: f.url_peca }));
+    
+// ============================================
 // monta a peça com seus cortes ativos
 // ============================================
 const buscarPecaComCortes = async (client, idPeca, idUsuario) => {
@@ -40,7 +64,13 @@ const buscarPecaComCortes = async (client, idPeca, idUsuario) => {
     [idPeca]
   );
 
-  return { ...peca.rows[0], cortes: cortes.rows };
+  const fotos = await buscarFotos(client, [idPeca]);
+
+  return {
+    ...peca.rows[0],
+    cortes: cortes.rows,
+    fotos: formatarFotos(fotos, peca.rows[0].id_peca),
+  };
 };
 
 // ============================================
@@ -119,9 +149,12 @@ const listar = async (req, res) => {
       );
     }
 
+    const fotos = ids.length > 0 ? await buscarFotos(pool, ids) : [];
+
     const resultado = pecas.rows.map((p) => ({
       ...p,
       cortes: cortes.rows.filter((c) => c.id_peca === p.id_peca),
+      fotos: formatarFotos(fotos, p.id_peca),
     }));
 
     return res.status(200).json(resultado);
@@ -301,4 +334,111 @@ const excluir = async (req, res) => {
   }
 };
 
-module.exports = { criar, listar, buscarPorId, atualizar, excluir };
+// ============================================
+// adicionar foto a uma peça
+// ============================================
+const adicionarFoto = async (req, res) => {
+  const idPeca = Number(req.params.id);
+
+  if (!Number.isInteger(idPeca)) {
+    return res.status(400).json({ erro: 'Id da peça inválido!' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ erro: 'Envie uma foto no campo "foto"!' });
+  }
+
+  const tipo = storage.detectarTipo(req.file.buffer);
+  if (!tipo) {
+    return res.status(400).json({ erro: 'Formato inválido! Use JPG, PNG ou WebP.' });
+  }
+
+  const erroLimite = { erro: `Cada peça pode ter no máximo ${MAX_FOTOS_PECA} fotos!` };
+  let url = null;
+
+  try {
+    const peca = await pool.query(
+      `SELECT 1 FROM PECA
+       WHERE ID_PECA = $1 AND ID_USUARIO = $2 AND SITUACAO = 'A'`,
+      [idPeca, req.usuarioId]
+    );
+
+    if (peca.rows.length === 0) {
+      return res.status(404).json({ erro: 'Peça não encontrada!' });
+    }
+
+    // confere o limite antes de enviar o arquivo
+    const total = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM FOTOS_PECA
+       WHERE ID_PECA = $1 AND SITUACAO = 'A'`,
+      [idPeca]
+    );
+
+    if (total.rows[0].total >= MAX_FOTOS_PECA) {
+      return res.status(409).json(erroLimite);
+    }
+
+    url = await storage.enviarFoto(`pecas/${idPeca}`, req.file.buffer, tipo);
+
+    const resultado = await pool.query(
+      `INSERT INTO FOTOS_PECA (ID_PECA, URL_PECA)
+       SELECT $1::int, $2::text
+       WHERE (SELECT COUNT(*) FROM FOTOS_PECA
+              WHERE ID_PECA = $1::int AND SITUACAO = 'A') < $3::int
+       RETURNING ID_FOTO, URL_PECA`,
+      [idPeca, url, MAX_FOTOS_PECA]
+    );
+
+    if (resultado.rows.length === 0) {
+      await storage.removerFoto(url);
+      return res.status(409).json(erroLimite);
+    }
+
+    const foto = resultado.rows[0];
+    return res.status(201).json({ id_foto: foto.id_foto, url: foto.url_peca });
+
+  } catch (err) {
+    console.error(err.message);
+    if (url) await storage.removerFoto(url);
+    return res.status(500).json({ erro: 'Não foi possível salvar a foto' });
+  }
+};
+
+// ============================================
+// remover foto de uma peça (inativa e apaga o arquivo)
+// ============================================
+const excluirFoto = async (req, res) => {
+  const idPeca = Number(req.params.id);
+  const idFoto = Number(req.params.idFoto);
+
+  if (!Number.isInteger(idPeca) || !Number.isInteger(idFoto)) {
+    return res.status(400).json({ erro: 'Id inválido!' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `UPDATE FOTOS_PECA F
+       SET SITUACAO = 'I', ULTIMA_MODIFICACAO = NOW()
+       FROM PECA P
+       WHERE F.ID_FOTO = $1 AND F.ID_PECA = $2 AND F.SITUACAO = 'A'
+         AND P.ID_PECA = F.ID_PECA AND P.ID_USUARIO = $3 AND P.SITUACAO = 'A'
+       RETURNING F.URL_PECA`,
+      [idFoto, idPeca, req.usuarioId]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ erro: 'Foto não encontrada!' });
+    }
+
+    await storage.removerFoto(resultado.rows[0].url_peca);
+
+    return res.status(204).send();
+
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+};
+
+module.exports = { criar, listar, buscarPorId, atualizar, excluir, adicionarFoto, excluirFoto };

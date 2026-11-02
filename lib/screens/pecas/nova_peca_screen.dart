@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/titulo_banner.dart';
@@ -5,6 +6,7 @@ import '../../core/widgets/modal_confirmacao.dart';
 import '../../core/widgets/painters.dart';
 import 'pecas_content.dart';
 import '../../core/services/api_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 // modelo de corte do formulário
 class CorteFormulario {
@@ -38,8 +40,14 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
   final _nomeController = TextEditingController();
   final _descricaoController = TextEditingController();
 
-  // lista de fotos selecionadas (por enquanto só paths)
-  final List<String> _fotos = [];
+  final List<FotoPeca> _fotosExistentes = [];
+  final List<FotoPeca> _fotosRemovidas = [];
+  final List<XFile> _fotosNovas = [];
+
+  static const int _maxFotos = 5; // mesmo limite do backend
+  final _picker = ImagePicker();
+
+  int get _totalFotos => _fotosExistentes.length + _fotosNovas.length;
 
   // lista de cortes do formulário — começa com um vazio
   final List<CorteFormulario> _cortes = [CorteFormulario()];
@@ -55,7 +63,7 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
       _descricaoController.text = widget.pecaParaEditar!.descricao;
 
       // preenche as fotos
-      _fotos.addAll(widget.pecaParaEditar!.fotos);
+      _fotosExistentes.addAll(widget.pecaParaEditar!.fotos);
 
       // preenche os cortes — substitui o corte vazio inicial
       if (widget.pecaParaEditar!.cortes.isNotEmpty) {
@@ -120,14 +128,27 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
 
     try {
       final peca = widget.pecaParaEditar;
+      final int idPeca;
 
       if (peca == null) {
-        await ApiService.instance.post('/pecas', corpo);
+        final criada = await ApiService.instance.post('/pecas', corpo) as Map<String, dynamic>;
+        idPeca = criada['id_peca'] as int;
       } else {
         await ApiService.instance.put('/pecas/${peca.id}', corpo);
+        idPeca = peca.id;
       }
 
+      // as fotos só podem ser enviadas depois que a peça existe
+      final falhas = await _sincronizarFotos(idPeca);
+
       if (!mounted) return;
+
+      if (falhas > 0) {
+        _mostrarErro(
+          'Peça salva, mas algumas fotos não foram concluídas. '
+          'Confira nos detalhes da peça.',
+        );
+      }
 
       Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -135,6 +156,99 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
+  }
+
+  // ============================================
+  // fotos: remove as marcadas e envia as novas
+  // ============================================
+  Future<int> _sincronizarFotos(int idPeca) async {
+    var falhas = 0;
+
+    for (final foto in _fotosRemovidas) {
+      try {
+        await ApiService.instance.delete('/pecas/$idPeca/fotos/${foto.id}');
+      } on ApiException {
+        falhas++;
+      }
+    }
+
+    for (final foto in _fotosNovas) {
+      try {
+        await ApiService.instance.enviarArquivo(
+          '/pecas/$idPeca/fotos',
+          'foto',
+          foto.path,
+          metodo: 'POST',
+        );
+      } on ApiException {
+        falhas++;
+      }
+    }
+
+    return falhas;
+  }
+
+  // ============================================
+  // fotos: escolher e remover
+  // ============================================
+  Future<void> _escolherDaGaleria() async {
+    final vagas = _maxFotos - _totalFotos;
+
+    if (vagas <= 0) {
+      _mostrarErro('Cada peça pode ter no máximo $_maxFotos fotos.');
+      return;
+    }
+
+    try {
+      final escolhidas = await _picker.pickMultiImage(
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (escolhidas.isEmpty || !mounted) return;
+
+      setState(() => _fotosNovas.addAll(escolhidas.take(vagas)));
+
+      if (escolhidas.length > vagas) {
+        _mostrarErro('Só cabiam mais $vagas fotos: as demais foram ignoradas.');
+      }
+    } catch (_) {
+      _mostrarErro('Não foi possível abrir a galeria.');
+    }
+  }
+
+  Future<void> _tirarFoto() async {
+    if (_totalFotos >= _maxFotos) {
+      _mostrarErro('Cada peça pode ter no máximo $_maxFotos fotos.');
+      return;
+    }
+
+    try {
+      final foto = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (foto == null || !mounted) return;
+
+      setState(() => _fotosNovas.add(foto));
+    } catch (_) {
+      _mostrarErro('Não foi possível abrir a câmera.');
+    }
+  }
+
+  void _removerFotoExistente(FotoPeca foto) {
+    setState(() {
+      _fotosExistentes.remove(foto);
+      _fotosRemovidas.add(foto);
+    });
+  }
+
+  void _removerFotoNova(XFile foto) {
+    setState(() => _fotosNovas.remove(foto));
   }
 
   void _mostrarErro(String mensagem) {
@@ -229,6 +343,35 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
   // seção de fotos
   // ============================================
   Widget _buildSecaoFotos() {
+    final miniaturas = <Widget>[
+      for (final foto in _fotosExistentes)
+        _buildMiniatura(
+          Image.network(
+            foto.url,
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+            cacheWidth: 240,
+            errorBuilder: (_, __, ___) => Icon(
+              Icons.broken_image_outlined,
+              color: AppColors.green.withOpacity(0.4),
+            ),
+          ),
+          () => _removerFotoExistente(foto),
+        ),
+      for (final foto in _fotosNovas)
+        _buildMiniatura(
+          Image.file(
+            File(foto.path),
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+            cacheWidth: 240,
+          ),
+          () => _removerFotoNova(foto),
+        ),
+    ];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -246,19 +389,25 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildLabel('Fotos'),
+          Row(
+            children: [
+              _buildLabel('Fotos'),
+              const Spacer(),
+              Text(
+                '$_totalFotos/$_maxFotos',
+                style: TextStyle(fontSize: 13, color: AppColors.green.withOpacity(0.7)),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
 
-          // botões de galeria e câmera
           Row(
             children: [
               Expanded(
                 child: _buildBotaoFoto(
                   icone: Icons.photo_library_outlined,
                   texto: 'Galeria',
-                  aoTocar: () {
-                    // TODO: abrir galeria com image_picker (nao faço idea de como fazer isso ainda)
-                  },
+                  aoTocar: _escolherDaGaleria,
                 ),
               ),
               const SizedBox(width: 12),
@@ -266,54 +415,31 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
                 child: _buildBotaoFoto(
                   icone: Icons.camera_alt_outlined,
                   texto: 'Câmera',
-                  aoTocar: () {
-                    // TODO: abrir câmera com image_picker (nao faço idea de como fazer isso ainda/2)
-                  },
+                  aoTocar: _tirarFoto,
                 ),
               ),
             ],
           ),
 
-          // preview das fotos selecionadas --> vou testar depois
-          if (_fotos.isNotEmpty) ...[
+          // prévia das fotos
+          if (miniaturas.isNotEmpty) ...[
             const SizedBox(height: 12),
             SizedBox(
               height: 80,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: _fotos.length,
+                itemCount: miniaturas.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, index) => Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        _fotos[index],
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    // botão de remover foto
-                    Positioned(
-                      top: 2,
-                      right: 2,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _fotos.removeAt(index)),
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.close, color: Colors.white, size: 14),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                itemBuilder: (_, index) => miniaturas[index],
               ),
             ),
+            if (_fotosNovas.isNotEmpty || _fotosRemovidas.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'As mudanças nas fotos são aplicadas quando você salvar.',
+                style: TextStyle(fontSize: 11, color: AppColors.green.withOpacity(0.6)),
+              ),
+            ],
           ] else ...[
             const SizedBox(height: 12),
             Center(
@@ -325,6 +451,32 @@ class _NovaPecaScreenState extends State<NovaPecaScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildMiniatura(Widget imagem, VoidCallback aoRemover) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(width: 80, height: 80, child: imagem),
+        ),
+        Positioned(
+          top: 2,
+          right: 2,
+          child: GestureDetector(
+            onTap: aoRemover,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 14),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
