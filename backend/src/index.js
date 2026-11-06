@@ -8,6 +8,10 @@ const pecasRoutes = require('./routes/pecas.routes');
 const execucoesRoutes = require('./routes/execucoes.routes');
 const notificacoesRoutes = require('./routes/notificacoes.routes');
 
+// MAQUINA
+const maquinaRoutes = require('./routes/maquina.routes');
+const maquinasRoutes = require('./routes/maquinas.routes');
+
 const app = express();
 
 // middlewares
@@ -20,6 +24,9 @@ app.use('/materiais', materiaisRoutes);
 app.use('/pecas', pecasRoutes);
 app.use('/execucoes', execucoesRoutes);
 app.use('/notificacoes', notificacoesRoutes);
+// maquina
+app.use('/maquina', maquinaRoutes);
+app.use('/maquinas', maquinasRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensagem: 'API funcionando!' });

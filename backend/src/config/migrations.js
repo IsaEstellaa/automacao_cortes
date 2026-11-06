@@ -178,6 +178,24 @@ const criarTabelas = async () => {
     `);
     console.log('✅ Tabela NOTIFICACOES criada!');
 
+    // MAQUINA
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS MAQUINA (
+        ID_MAQUINA SERIAL PRIMARY KEY,
+        ID_USUARIO INT NOT NULL REFERENCES USUARIO(ID_USUARIO),
+        NOME VARCHAR(100) NOT NULL DEFAULT 'Minha máquina',
+        CHAVE_HASH VARCHAR(64) NOT NULL UNIQUE,
+        ULTIMO_CONTATO TIMESTAMP,
+        SITUACAO CHAR(1) DEFAULT 'A',
+        DATA_CADASTRO TIMESTAMP DEFAULT NOW(),
+        ULTIMA_MODIFICACAO TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await pool.query(`
+      COMMENT ON COLUMN MAQUINA.SITUACAO IS 'A = Ativa, I = Inativa';
+    `);
+    console.log('✅ Tabela MAQUINA criada!');
+
     console.log('\n🎉 Todas as tabelas criadas com sucesso!');
     process.exit(0);
 
