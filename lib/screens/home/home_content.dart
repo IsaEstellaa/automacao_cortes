@@ -261,15 +261,15 @@ void _mostrarModalAjuda(BuildContext context) {
               children: [
                 Row(
                   children: [
-                    Text('⚠️', style: TextStyle(fontSize: 22)),
-                    const SizedBox(width: 8),
+                    Text('⚠️', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 5),
                     ShaderMask(
                       shaderCallback: (bounds) => AppColors.gradienteTitulo.createShader(bounds),
                       child: Center(
                         child: Text(
                           'Máquina indisponível',
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),

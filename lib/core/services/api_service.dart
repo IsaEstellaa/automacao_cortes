@@ -19,7 +19,8 @@ class ApiService {
   ApiService._();
   static final ApiService instance = ApiService._();
 
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  static const String baseUrl = 'http://192.168.0.106:3000';
+  // static const String baseUrl = 'http://10.0.2.2:3000'; // emulador
   static const Duration _timeout = Duration(seconds: 20);
 
   static const _storage = FlutterSecureStorage();

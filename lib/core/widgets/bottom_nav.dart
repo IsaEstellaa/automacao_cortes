@@ -18,18 +18,23 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.green,
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          // TODO: adicionar os icones corretos
-          _buildItem(0, 'assets/icons/tesoura.svg'),
-          _buildItem(1, 'assets/icons/macrame.png', isPng: true),
-          _buildItem(2, 'assets/icons/home.svg'),
-          _buildItem(3, 'assets/icons/notificacao.svg', comBadge: true),
-          _buildItem(4, 'assets/icons/configuracao.svg'),
-        ],
-      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // TODO: adicionar os icones corretos
+              _buildItem(0, 'assets/icons/tesoura.svg'),
+              _buildItem(1, 'assets/icons/macrame.png', isPng: true),
+              _buildItem(2, 'assets/icons/home.svg'),
+              _buildItem(3, 'assets/icons/notificacao.svg', comBadge: true),
+              _buildItem(4, 'assets/icons/configuracao.svg'),
+            ],
+          ),
+        ),
+      )
     );
   }
 
