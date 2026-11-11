@@ -19,9 +19,12 @@ class ApiService {
   ApiService._();
   static final ApiService instance = ApiService._();
 
-  static const String baseUrl = 'http://192.168.0.106:3000';
+  static const String baseUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'https://automacao-cortes-api.onrender.com',
+  );
   // static const String baseUrl = 'http://10.0.2.2:3000'; // emulador
-  static const Duration _timeout = Duration(seconds: 20);
+  static const Duration _timeout = Duration(seconds: 60);
 
   static const _storage = FlutterSecureStorage();
   static const _chaveToken = 'token';
