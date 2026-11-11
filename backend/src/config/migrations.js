@@ -192,6 +192,11 @@ const criarTabelas = async () => {
       );
     `);
     await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS UQ_MAQUINA_USUARIO_ATIVA
+      ON MAQUINA (ID_USUARIO)
+      WHERE SITUACAO = 'A';
+    `);
+    await pool.query(`
       COMMENT ON COLUMN MAQUINA.SITUACAO IS 'A = Ativa, I = Inativa';
     `);
     console.log('✅ Tabela MAQUINA criada!');
