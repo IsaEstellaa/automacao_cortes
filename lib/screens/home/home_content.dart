@@ -1,3 +1,6 @@
+import 'dart:async';
+import '../../core/services/api_service.dart';
+import '../maquina/minha_maquina_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
@@ -8,8 +11,9 @@ import '../corte/novo_corte_screen.dart';
 import '../materiais/materiais_screen.dart';
 
 // enum com os possíveis estados da máquina
-// quando integrar com IoT, só muda o valor do _statusAtual
 enum StatusMaquina {
+  verificando,
+  semMaquina,
   aguardando,
   trabalhando,
   naoEncontrada,
@@ -23,12 +27,79 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
-  // trocar aqui para simular os estados
-  StatusMaquina _statusAtual = StatusMaquina.naoEncontrada;
+  // estado vem de GET /maquinas/status
+  StatusMaquina _statusAtual = StatusMaquina.verificando;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarStatus();
+    // TODO: retirar a atualizacao a cada 10s
+    _timer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _carregarStatus(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _carregarStatus() async {
+    StatusMaquina novo;
+    try {
+      final dados = await ApiService.instance.get('/maquinas/status');
+      final lista = dados as List;
+
+      if (lista.isEmpty) {
+        novo = StatusMaquina.semMaquina;
+      } else {
+        final m = lista.first as Map;
+        if (m['online'] != true) {
+          novo = StatusMaquina.naoEncontrada;
+        } else if (m['trabalhando'] == true) {
+          novo = StatusMaquina.trabalhando;
+        } else {
+          novo = StatusMaquina.aguardando;
+        }
+      }
+    } on ApiException {
+      if (_statusAtual != StatusMaquina.verificando) return;
+      novo = StatusMaquina.naoEncontrada;
+    }
+
+    if (!mounted || novo == _statusAtual) return;
+    setState(() => _statusAtual = novo);
+  }
+
+  Future<void> _abrirMinhaMaquina() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const MinhaMaquinaScreen()),
+    );
+    if (mounted) _carregarStatus();
+  }
 
   // mapeamento dos estados da maquina
   Map<String, dynamic> _infoStatus() {
     switch (_statusAtual) {
+      case StatusMaquina.verificando:
+        return {
+          'texto': 'Verificando a máquina...',
+          'icone': Icons.sync,
+          'corListras': AppColors.listrasFitaRosa,
+          'corFundo': AppColors.fundoFitaRosa,
+        };
+      case StatusMaquina.semMaquina:
+        return {
+          'texto': 'Você não possui uma\n máquina cadastrada',
+          'icone': Icons.add_circle_outline,
+          'corListras': AppColors.listrasFitaRosa,
+          'corFundo': AppColors.fundoFitaRosa,
+        };
       case StatusMaquina.aguardando:
         return {
           'texto': 'A máquina está aguardando\num novo corte',
@@ -179,6 +250,31 @@ class _HomeContentState extends State<HomeContent> {
                 ),
               ),
             ),
+          if (_statusAtual == StatusMaquina.semMaquina) ...[
+            Center(
+              child: ElevatedButton(
+                onPressed: _abrirMinhaMaquina,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(10),
+                      topRight: Radius.circular(30),
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(10),
+                    ),
+                  ),
+                ),
+                child: const Text(
+                  'Cadastrar máquina',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
         ],
       ),
     );

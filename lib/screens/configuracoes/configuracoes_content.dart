@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/modal_confirmacao.dart';
+import '../maquina/minha_maquina_screen.dart';
 import '../login/login_screen.dart';
 import 'editar_perfil_screen.dart';
 import 'ajuda_screen.dart';
@@ -24,6 +25,16 @@ class ConfiguracoesContent extends StatelessWidget {
       child: Column(
         children: [
           _buildCardPerfil(context),
+          const SizedBox(height: 15),
+                    _buildItemMenu(
+            context,
+            icone: Icons.precision_manufacturing_outlined,
+            titulo: 'Minha máquina',
+            aoTocar: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MinhaMaquinaScreen()),
+            ),
+          ),
           const SizedBox(height: 15),
           _buildItemMenu(
             context,
