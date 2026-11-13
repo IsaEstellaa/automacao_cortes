@@ -54,16 +54,22 @@ const criar = async (req, res) => {
 // GET /maquinas/status
 const status = async (req, res) => {
   try {
-    const r = await pool.query(
-      `SELECT ID_MAQUINA, NOME, ULTIMO_CONTATO,
-              (ULTIMO_CONTATO IS NOT NULL
-               AND ULTIMO_CONTATO > NOW() - INTERVAL '15 seconds') AS ONLINE,
-              CASE WHEN ULTIMO_CONTATO IS NULL THEN NULL
-                   ELSE EXTRACT(EPOCH FROM (NOW() - ULTIMO_CONTATO))::int
-              END AS SEGUNDOS_DESDE_CONTATO
-       FROM MAQUINA
-       WHERE ID_USUARIO = $1 AND SITUACAO = 'A'
-       ORDER BY ID_MAQUINA`,
+        const r = await pool.query(
+      `SELECT M.ID_MAQUINA, M.NOME, M.ULTIMO_CONTATO,
+          (M.ULTIMO_CONTATO IS NOT NULL
+            AND M.ULTIMO_CONTATO > NOW() - INTERVAL '15 seconds') AS ONLINE,
+          CASE WHEN M.ULTIMO_CONTATO IS NULL THEN NULL
+                ELSE EXTRACT(EPOCH FROM (NOW() - M.ULTIMO_CONTATO))::int
+          END AS SEGUNDOS_DESDE_CONTATO,
+          EXISTS (
+            SELECT 1 FROM EXECUCAO_CORTE E
+            JOIN CORTE C ON C.ID_CORTE = E.ID_CORTE
+            JOIN PECA P ON P.ID_PECA = C.ID_PECA
+            WHERE P.ID_USUARIO = M.ID_USUARIO AND E.SITUACAO = 'P'
+          ) AS TRABALHANDO
+       FROM MAQUINA M
+       WHERE M.ID_USUARIO = $1 AND M.SITUACAO = 'A'
+       ORDER BY M.ID_MAQUINA`,
       [req.usuarioId]
     );
     res.json(r.rows);
