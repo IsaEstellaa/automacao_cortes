@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../config/database');
+const { registrarContato } = require('../services/realtime.service');
 
 const autenticarMaquina = async (req, res, next) => {
   try {
@@ -26,6 +27,7 @@ const autenticarMaquina = async (req, res, next) => {
       id: resultado.rows[0].id_maquina,
       idUsuario: resultado.rows[0].id_usuario,
     };
+    registrarContato(req.maquina.id, req.maquina.idUsuario);
     next();
   } catch (erro) {
     console.error(erro);

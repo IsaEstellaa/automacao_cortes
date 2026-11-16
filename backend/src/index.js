@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const http = require('http');
+const { iniciarRealtime } = require('./services/realtime.service');
 
 const usuarioRoutes = require('./routes/usuario.routes');
 const materiaisRoutes = require('./routes/materiais.routes');
@@ -34,6 +36,9 @@ app.get('/', (req, res) => {
 
 // inicia o servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const servidor = http.createServer(app);
+iniciarRealtime(servidor);
+
+servidor.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });

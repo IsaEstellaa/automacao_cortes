@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { avisar } = require('../services/realtime.service');
 
 // ============================================
 // verifica se há algo em andamento (fila ou retentativa pendente)
@@ -125,6 +126,7 @@ const criar = async (req, res) => {
     }
 
     await client.query('COMMIT');
+    avisar(req.usuarioId, 'fila');
     return res.status(201).json(criadas);
 
   } catch (err) {
@@ -429,6 +431,7 @@ const retentar = async (req, res) => {
     );
 
     await client.query('COMMIT');
+    avisar(req.usuarioId, 'fila');
     return res.status(201).json(retentativas.rows);
 
   } catch (err) {

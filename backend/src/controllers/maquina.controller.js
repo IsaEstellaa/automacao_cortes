@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { avisar } = require('../services/realtime.service');
 
 const MENSAGENS_ERRO = {
   FALHA_MEDICAO: 'Falha na medição',
@@ -113,6 +114,8 @@ const trabalho = async (req, res) => {
 
     const t = await montarCorte(client, pegou.rows[0].id_execucao);
     await client.query('COMMIT');
+    avisar(idUsuario, 'fila');
+    avisar(idUsuario, 'status');
     res.json({ trabalho: t });
   } catch (erro) {
     await client.query('ROLLBACK');
@@ -195,6 +198,7 @@ const resultado = async (req, res) => {
       }
 
       await client.query('COMMIT');
+      avisar(idUsuario, 'fila');
       return res.json({ ok: true });
     }
 
@@ -234,6 +238,8 @@ const resultado = async (req, res) => {
     }
 
     await client.query('COMMIT');
+    avisar(idUsuario, 'fila');
+    if (Number(pendentes) === 0) avisar(idUsuario, 'status');
     res.json({ ok: true, lote_finalizado: Number(pendentes) === 0 });
   } catch (erro) {
     await client.query('ROLLBACK');

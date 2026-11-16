@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../config/database');
+const { avisar } = require('../services/realtime.service');
 
 const gerarChave = () => {
   const chave = crypto.randomBytes(24).toString('hex');
@@ -33,6 +34,8 @@ const criar = async (req, res) => {
        RETURNING ID_MAQUINA, NOME`,
       [req.usuarioId, nome, hash]
     );
+
+    avisar(req.usuarioId, 'status');
 
     res.status(201).json({
       id_maquina: r.rows[0].id_maquina,
@@ -103,6 +106,8 @@ const renomear = async (req, res) => {
     if (r.rows.length === 0) {
       return res.status(404).json({ erro: 'Máquina não encontrada' });
     }
+
+    avisar(req.usuarioId, 'status');
     res.json(r.rows[0]);
   } catch (erro) {
     console.error(erro);
@@ -132,6 +137,8 @@ const novaChave = async (req, res) => {
     if (r.rows.length === 0) {
       return res.status(404).json({ erro: 'Máquina não encontrada' });
     }
+
+    avisar(req.usuarioId, 'status');
 
     res.json({
       id_maquina: r.rows[0].id_maquina,
@@ -164,6 +171,8 @@ const remover = async (req, res) => {
     if (r.rows.length === 0) {
       return res.status(404).json({ erro: 'Máquina não encontrada' });
     }
+
+    avisar(req.usuarioId, 'status');
     res.json({ ok: true });
   } catch (erro) {
     console.error(erro);
