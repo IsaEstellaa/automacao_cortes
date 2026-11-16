@@ -37,6 +37,7 @@ class ApiService {
   bool _restaurando = false;
 
   bool get logado => _token != null;
+  String? get token => _token;
 
   // ============================================
   // autenticação

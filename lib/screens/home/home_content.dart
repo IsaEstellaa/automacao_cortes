@@ -9,6 +9,7 @@ import '../../core/widgets/fita_decorativa.dart';
 import '../../core/widgets/botao_novo_corte.dart';
 import '../corte/novo_corte_screen.dart';
 import '../materiais/materiais_screen.dart';
+import '../../core/services/tempo_real.dart';
 
 // enum com os possíveis estados da máquina
 enum StatusMaquina {
@@ -29,26 +30,25 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> {
   // estado vem de GET /maquinas/status
   StatusMaquina _statusAtual = StatusMaquina.verificando;
-  Timer? _timer;
+  int _busca = 0;
 
   @override
   void initState() {
     super.initState();
     _carregarStatus();
-    // TODO: retirar a atualizacao a cada 10s
-    _timer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => _carregarStatus(),
-    );
+    TempoReal.instance.status.addListener(_aoAvisoStatus);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    TempoReal.instance.status.removeListener(_aoAvisoStatus);
     super.dispose();
   }
 
+  void _aoAvisoStatus() => _carregarStatus();
+
   Future<void> _carregarStatus() async {
+    final minhaBusca = ++_busca;
     StatusMaquina novo;
     try {
       final dados = await ApiService.instance.get('/maquinas/status');
@@ -67,11 +67,12 @@ class _HomeContentState extends State<HomeContent> {
         }
       }
     } on ApiException {
+      // sem resposta: mantém
       if (_statusAtual != StatusMaquina.verificando) return;
       novo = StatusMaquina.naoEncontrada;
     }
 
-    if (!mounted || novo == _statusAtual) return;
+    if (!mounted || minhaBusca != _busca || novo == _statusAtual) return;
     setState(() => _statusAtual = novo);
   }
 

@@ -6,6 +6,7 @@ import 'modal_detalhes_corte.dart';
 import '../corte/novo_corte_screen.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/estado_erro.dart';
+import '../../core/services/tempo_real.dart';
 
 // ============================================
 // modelos de dados
@@ -119,30 +120,40 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
   List<HistoricoPeca> _historico = [];
   bool _carregando = true;
   bool _buscando = false;
+  bool _recarregar = false;
   String? _erro;
-  Timer? _timer;
+  Timer? _relogio;
 
   @override
   void initState() {
     super.initState();
     _carregar();
 
-    _timer = Timer.periodic(
-        const Duration(seconds: 5), (_) => _carregar(silencioso: true));
+    TempoReal.instance.fila.addListener(_aoAvisoFila);
+
+    _relogio = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _fila.isNotEmpty) setState(() {});
+    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    TempoReal.instance.fila.removeListener(_aoAvisoFila);
+    _relogio?.cancel();
     super.dispose();
   }
+
+  void _aoAvisoFila() => _carregar(silencioso: true);
 
   // ============================================
   // busca fila e histórico na API
   // silencioso = atualização automática, se falhar, mantém
   // ============================================
   Future<void> _carregar({bool silencioso = false}) async {
-    if (_buscando) return;
+    if (_buscando) {
+      _recarregar = true;
+      return;
+    }
     _buscando = true;
 
     if (!silencioso) {
@@ -182,6 +193,11 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
     } finally {
       _buscando = false;
       if (mounted && !silencioso) setState(() => _carregando = false);
+
+      if (_recarregar && mounted) {
+        _recarregar = false;
+        _carregar(silencioso: true);
+      }
     }
   }
   

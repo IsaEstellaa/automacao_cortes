@@ -6,6 +6,7 @@ import '../../core/services/api_service.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/widgets/titulo_banner.dart';
+import '../../core/services/tempo_real.dart';
 
 class MinhaMaquinaScreen extends StatefulWidget {
   const MinhaMaquinaScreen({super.key});
@@ -19,24 +20,21 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
   bool _ocupado = false;
   String? _erro;
   Map<String, dynamic>? _maquina;
-  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _carregar();
-    // TODO: retirar a atualizacao a cada 10s
-    _timer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => _carregar(silencioso: true),
-    );
+    TempoReal.instance.status.addListener(_aoAvisoStatus);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    TempoReal.instance.status.removeListener(_aoAvisoStatus);
     super.dispose();
   }
+
+  void _aoAvisoStatus() => _carregar(silencioso: true);
 
   // ============================================
   // dados

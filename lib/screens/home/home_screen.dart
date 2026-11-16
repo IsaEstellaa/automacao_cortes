@@ -11,6 +11,7 @@ import '../configuracoes/configuracoes_content.dart';
 import '../automacao/automacao_content.dart';
 import '../pecas/pecas_content.dart';
 import 'home_content.dart';
+import '../../core/services/tempo_real.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,14 +32,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     NotificacoesContador.instance.zerar();
     NotificacoesContador.instance.atualizar();
     _iniciarTimerContador();
+
+    TempoReal.instance.notificacoes.addListener(_aoAvisoNotificacoes);
+    TempoReal.instance.conectar();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timerContador?.cancel();
+
+    TempoReal.instance.notificacoes.removeListener(_aoAvisoNotificacoes);
+    TempoReal.instance.desconectar();
+
     super.dispose();
   }
+
+  void _aoAvisoNotificacoes() => NotificacoesContador.instance.atualizar();
 
   void _iniciarTimerContador() {
     _timerContador?.cancel();
