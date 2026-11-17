@@ -14,6 +14,9 @@ const notificacoesRoutes = require('./routes/notificacoes.routes');
 const maquinaRoutes = require('./routes/maquina.routes');
 const maquinasRoutes = require('./routes/maquinas.routes');
 
+// DISPOSITIVO
+const dispositivosRoutes = require('./routes/dispositivos.routes');
+
 const app = express();
 
 // middlewares
@@ -29,6 +32,8 @@ app.use('/notificacoes', notificacoesRoutes);
 // maquina
 app.use('/maquina', maquinaRoutes);
 app.use('/maquinas', maquinasRoutes);
+// dispositivo
+app.use('/dispositivos', dispositivosRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensagem: 'API funcionando!' });
@@ -42,3 +47,5 @@ iniciarRealtime(servidor);
 servidor.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
+
+require('./services/push.service').iniciar();

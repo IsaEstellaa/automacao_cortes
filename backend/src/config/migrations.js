@@ -26,6 +26,24 @@ const criarTabelas = async () => {
     `);
     console.log('✅ Tabela USUARIO criada!');
 
+    // DISPOSITIVO
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS DISPOSITIVO (
+        ID_DISPOSITIVO SERIAL PRIMARY KEY,
+        ID_USUARIO INTEGER NOT NULL REFERENCES USUARIO (ID_USUARIO),
+        TOKEN_FCM TEXT NOT NULL UNIQUE,
+        DATA_CADASTRO TIMESTAMP NOT NULL DEFAULT NOW(),
+        ULTIMA_MODIFICACAO TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS IX_DISPOSITIVO_USUARIO
+      ON DISPOSITIVO (ID_USUARIO);
+    `);
+
+    console.log('✅ Tabela DISPOSITIVO criada!');
+
     // MATERIAL
     await pool.query(`
       CREATE TABLE IF NOT EXISTS MATERIAL (
