@@ -12,6 +12,7 @@ import '../automacao/automacao_content.dart';
 import '../pecas/pecas_content.dart';
 import 'home_content.dart';
 import '../../core/services/tempo_real.dart';
+import '../../core/services/push_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     TempoReal.instance.notificacoes.addListener(_aoAvisoNotificacoes);
     TempoReal.instance.conectar();
+    PushService.instance.iniciar();
   }
 
   @override

@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/modal_confirmacao.dart';
+import '../../core/services/push_service.dart';
 import '../maquina/minha_maquina_screen.dart';
 import '../login/login_screen.dart';
 import 'editar_perfil_screen.dart';
@@ -66,6 +67,7 @@ class ConfiguracoesContent extends StatelessWidget {
                 mensagem: 'Você precisará entrar novamente para usar o app.',
                 textoBotaoConfirmar: 'Sair',
                 aoConfirmar: () async {
+                  await PushService.instance.removerToken();
                   await ApiService.instance.logout();
 
                   // limpa a pilha

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'screens/splash/splash_screen.dart';
 import 'core/services/api_service.dart';
 import 'screens/login/login_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   // se o servidor recusar o token com o app em uso (sessão expirada),
   // limpa a pilha de telas, volta para o login e avisa
   ApiService.instance.aoSessaoExpirada = () {
