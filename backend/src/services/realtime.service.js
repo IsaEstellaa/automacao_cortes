@@ -1,5 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const pool = require('../config/database');
+const { notificar } = require('./notificar.service');
 
 let io = null;
 
@@ -25,13 +27,36 @@ const registrarContato = (idMaquina, idUsuario) => {
   }
 };
 
+const avisarMaquinaOffline = async (idMaquina, idUsuario) => {
+  try {
+    const ativa = await pool.query(
+      `SELECT 1 FROM MAQUINA WHERE ID_MAQUINA = $1 AND SITUACAO = 'A'`,
+      [idMaquina]
+    );
+    if (ativa.rows.length === 0) {
+      maquinas.delete(idMaquina);
+      return;
+    }
+
+    await notificar({
+      idUsuario,
+      tipo: 'A',
+      titulo: 'Máquina offline',
+      mensagem: 'Não conseguimos falar com a sua máquina. Confira a energia e o Wi-Fi.',
+    });
+  } catch (erro) {
+    console.error('[notificar] máquina offline:', erro.message);
+  }
+};
+
 const iniciarVigiaMaquinas = () => {
   setInterval(() => {
     const agora = Date.now();
-    for (const m of maquinas.values()) {
+    for (const [idMaquina, m] of maquinas) {
       if (m.online && agora - m.ultimoContato > JANELA_ONLINE_MS) {
         m.online = false;
         avisar(m.idUsuario, 'status');
+        avisarMaquinaOffline(idMaquina, m.idUsuario);
       }
     }
   }, 5000);

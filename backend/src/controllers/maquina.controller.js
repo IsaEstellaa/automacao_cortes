@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { avisar } = require('../services/realtime.service');
+const { notificarFimDoLote } = require('../services/notificar.service');
 
 const MENSAGENS_ERRO = {
   FALHA_MEDICAO: 'Falha na medição',
@@ -221,20 +222,21 @@ const resultado = async (req, res) => {
     // fecha o lote
     const resumo = await client.query(
       `SELECT
+         COUNT(*) AS total,
          COUNT(*) FILTER (WHERE STATUS = 'P') AS pendentes,
          COUNT(*) FILTER (WHERE STATUS = 'E') AS com_erro
        FROM FIO WHERE ID_EXECUCAO = $1`,
       [idExecucao]
     );
-    const { pendentes, com_erro } = resumo.rows[0];
+    const { total, pendentes, com_erro } = resumo.rows[0];
 
     if (Number(pendentes) === 0) {
-      await client.query(
-        `UPDATE EXECUCAO_CORTE
-         SET SITUACAO = $1, DATA_FIM = NOW()
-         WHERE ID_EXECUCAO = $2`,
-        [Number(com_erro) > 0 ? 'E' : 'C', idExecucao]
-      );
+      notificarFimDoLote({
+        idUsuario,
+        idExecucao,
+        houveErro: Number(com_erro) > 0,
+        totalFios: Number(total),
+      }).catch((e) => console.error('[notificar]', e.message));
     }
 
     await client.query('COMMIT');
