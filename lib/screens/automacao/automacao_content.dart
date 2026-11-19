@@ -7,6 +7,7 @@ import '../corte/novo_corte_screen.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/estado_erro.dart';
 import '../../core/services/tempo_real.dart';
+import '../../core/utils/formatadores_data.dart';
 
 // ============================================
 // modelos de dados
@@ -42,6 +43,7 @@ class ExecucaoCorte {
   final String situacao; // A=aguardando, P=processando, C=concluído, E=com erro
   final DateTime? dataInicio;
   final DateTime? dataFim;
+  final DateTime? dataCadastro;
   final bool retentativa; // true = fios sendo refeitos (não um corte novo)
 
   ExecucaoCorte({
@@ -53,6 +55,7 @@ class ExecucaoCorte {
     required this.situacao,
     this.dataInicio,
     this.dataFim,
+    this.dataCadastro,
     this.retentativa = false,
   });
 
@@ -65,6 +68,7 @@ class ExecucaoCorte {
       situacao: json['situacao'] as String,
       dataInicio: _paraData(json['data_inicio']),
       dataFim: _paraData(json['data_fim']),
+      dataCadastro: _paraData(json['data_cadastro'])?.toLocal(),
       fios: (json['fios'] as List)
           .map((f) => FioExecucao.fromJson(f as Map<String, dynamic>))
           .toList(),
@@ -80,30 +84,6 @@ class ExecucaoCorte {
   double get progresso => quantidade > 0 ? fiosConcluidos / quantidade : 0;
 }
 
-class HistoricoPeca {
-  final int idPeca;
-  final String nomePeca;
-  final List<ExecucaoCorte> execucoes;
-  bool expandido;
-
-  HistoricoPeca({
-    required this.idPeca,
-    required this.nomePeca,
-    required this.execucoes,
-    this.expandido = false,
-  });
-
-  factory HistoricoPeca.fromJson(Map<String, dynamic> json) {
-    return HistoricoPeca(
-      idPeca: json['id_peca'] as int,
-      nomePeca: json['nome_peca'] as String,
-      execucoes: (json['execucoes'] as List)
-          .map((e) => ExecucaoCorte.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
-  }
-}
-
 // ============================================
 // tela de automação
 // ============================================
@@ -117,7 +97,8 @@ class AutomacaoContent extends StatefulWidget {
 class _AutomacaoContentState extends State<AutomacaoContent> {
 
   List<ExecucaoCorte> _fila = [];
-  List<HistoricoPeca> _historico = [];
+  List<ExecucaoCorte> _historico = [];
+  final Set<int> _abertas = {};
   bool _carregando = true;
   bool _buscando = false;
   bool _recarregar = false;
@@ -173,13 +154,15 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
           .map((j) => ExecucaoCorte.fromJson(j as Map<String, dynamic>))
           .toList();
 
-      final abertas = _historico.where((h) => h.expandido).map((h) => h.idPeca).toSet();
-
-      final historico = (respostas[1] as List).map((j) {
-        final item = HistoricoPeca.fromJson(j as Map<String, dynamic>);
-        item.expandido = abertas.contains(item.idPeca);
-        return item;
-      }).toList();
+      final historico = [
+        for (final grupo in (respostas[1] as List))
+          for (final e in (grupo['execucoes'] as List))
+            ExecucaoCorte.fromJson(e as Map<String, dynamic>),
+      ]..sort((a, b) {
+          final porData = (b.dataCadastro ?? DateTime(0))
+              .compareTo(a.dataCadastro ?? DateTime(0));
+          return porData != 0 ? porData : b.id.compareTo(a.id);
+        });
 
       if (!mounted) return;
       setState(() {
@@ -482,9 +465,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
                 ),
                 child: _buildVazio('Nenhum corte realizado até\no momento'),
               )
-            : Column(
-                children: _historico.map(_buildCardHistorico).toList(),
-              ),
+            : Column(children: _buildItensHistorico()),
       ],
     );
   }
@@ -492,7 +473,58 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
   // ============================================
   // container do histórico
   // ============================================
-  Widget _buildCardHistorico(HistoricoPeca historico) {
+  List<Widget> _buildItensHistorico() {
+    final itens = <Widget>[];
+    DateTime? diaAtual;
+
+    for (final exec in _historico) {
+      final data = exec.dataCadastro;
+      if (data != null) {
+        final dia = DateTime(data.year, data.month, data.day);
+        if (diaAtual != dia) {
+          itens.add(Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildSeparadorDia(dia),
+          ));
+          diaAtual = dia;
+        }
+      }
+      itens.add(_buildCardHistorico(exec));
+    }
+
+    return itens;
+  }
+
+  Widget _buildSeparadorDia(DateTime dia) {
+    return Opacity(
+      opacity: 0.5,
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: AppColors.green, thickness: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              formatarDia(dia),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.green,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: AppColors.green, thickness: 1)),
+        ],
+      ),
+    );
+  }
+
+  // ============================================
+  // collapse de uma execução do histórico
+  // ============================================
+  Widget _buildCardHistorico(ExecucaoCorte exec) {
+    final expandido = _abertas.contains(exec.id);
+    final temErro = exec.fios.any((f) => f.status == 'E');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -510,32 +542,53 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
         children: [
           // header clicável do collapse
           GestureDetector(
-            onTap: () => setState(() => historico.expandido = !historico.expandido),
+            onTap: () => setState(() {
+              if (expandido) {
+                _abertas.remove(exec.id);
+              } else {
+                _abertas.add(exec.id);
+              }
+            }),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   Icon(Icons.checkroom_outlined, size: 20, color: AppColors.green),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      historico.nomePeca,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.green,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          exec.nomePeca,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.green,
+                          ),
+                        ),
+                        if (exec.dataCadastro != null)
+                          Text(
+                            formatarDiaHora(exec.dataCadastro!),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.green.withOpacity(0.6),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
 
-                  if (historico.execucoes.any((e) => e.fios.any((f) => f.status == 'E')))
+                  if (temErro)
                     Padding(
                       padding: const EdgeInsets.only(right: 4),
                       child: Icon(Icons.warning_amber_rounded, color: const Color.fromARGB(255, 117, 17, 2), size: 18),
                     ),
 
                   Icon(
-                    historico.expandido ? Icons.expand_less : Icons.expand_more,
+                    expandido ? Icons.expand_less : Icons.expand_more,
                     color: AppColors.green,
                   ),
                 ],
@@ -543,54 +596,49 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
             ),
           ),
 
-          // cortes dentro do collapse
-          if (historico.expandido)
-            Column(
-              children: historico.execucoes.map((exec) {
-                return Container(
-                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(6),
-                      bottomLeft: Radius.circular(6),
-                      bottomRight: Radius.circular(30),
+          if (expandido)
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(6),
+                  bottomLeft: Radius.circular(6),
+                  bottomRight: Radius.circular(30),
+                ),
+                border: Border.all(color: AppColors.bordaMarrom, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.content_cut_outlined, size: 18, color: AppColors.green),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${exec.quantidade} cortes de ${_formatarMetros(exec.metragem)} metros',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textoPreto),
+                        ),
+                        Text(
+                          '(${exec.fiosConcluidos}/${exec.quantidade}) concluídos',
+                          style: TextStyle(fontSize: 11, color: AppColors.textoPreto),
+                        ),
+                      ],
                     ),
-                    border: Border.all(color: AppColors.bordaMarrom, width: 1),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.content_cut_outlined, size: 18, color: AppColors.green),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${exec.quantidade} cortes de ${_formatarMetros(exec.metragem)} metros',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textoPreto),
-                            ),
-                            Text(
-                              '(${exec.fiosConcluidos}/${exec.quantidade}) concluídos',
-                              style: TextStyle(fontSize: 11, color: AppColors.textoPreto),
-                            ),
-                          ],
-                        ),
-                      ),
 
-                      // ícone de alerta se tiver fio com erro
-                      if (exec.fios.any((f) => f.status == 'E'))
-                        GestureDetector(
-                          onTap: () => _abrirDetalhes(exec),
-                          child: Icon(Icons.warning_amber_rounded,
-                            color: const Color.fromARGB(255, 117, 17, 2), size: 20),
-                        ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                  // ícone de alerta se tiver fio com erro
+                  if (temErro)
+                    GestureDetector(
+                      onTap: () => _abrirDetalhes(exec),
+                      child: Icon(Icons.warning_amber_rounded,
+                          color: const Color.fromARGB(255, 117, 17, 2), size: 20),
+                    ),
+                ],
+              ),
             ),
         ],
       ),

@@ -4,6 +4,7 @@ import '../../core/widgets/painters.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/estado_erro.dart';
 import '../../core/services/notificacoes_contador.dart';
+import '../../core/utils/formatadores_data.dart';
 
 // icone da notificacao
 enum TipoNotificacao {
@@ -37,24 +38,6 @@ TipoNotificacao _tipoDoCodigo(String tipo) {
     default:
       return TipoNotificacao.info;
   }
-}
-
-const _meses = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
-];
-
-String _formatarDia(DateTime dia) {
-  final agora = DateTime.now();
-
-  final hoje = DateTime.utc(agora.year, agora.month, agora.day);
-  final alvo = DateTime.utc(dia.year, dia.month, dia.day);
-  final diferenca = hoje.difference(alvo).inDays;
-
-  if (diferenca == 0) return 'Hoje';
-  if (diferenca == 1) return 'Ontem';
-
-  return '${dia.day} de ${_meses[dia.month - 1]} de ${dia.year}';
 }
 
 class Notificacao {
@@ -202,7 +185,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              _formatarDia(dia),
+              formatarDia(dia),
               style: TextStyle(
                 fontSize: 12,
                 color: AppColors.green,
