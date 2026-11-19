@@ -84,6 +84,17 @@ class ExecucaoCorte {
   double get progresso => quantidade > 0 ? fiosConcluidos / quantidade : 0;
 }
 
+// cortes da mesma peça enviados juntos
+class EnvioHistorico {
+  final String nomePeca;
+  final DateTime? dataCadastro;
+  final List<ExecucaoCorte> execucoes = [];
+
+  EnvioHistorico({required this.nomePeca, required this.dataCadastro});
+
+  int get id => execucoes.first.id;
+}
+
 // ============================================
 // tela de automação
 // ============================================
@@ -97,7 +108,7 @@ class AutomacaoContent extends StatefulWidget {
 class _AutomacaoContentState extends State<AutomacaoContent> {
 
   List<ExecucaoCorte> _fila = [];
-  List<ExecucaoCorte> _historico = [];
+  List<EnvioHistorico> _historico = [];
   final Set<int> _abertas = {};
   bool _carregando = true;
   bool _buscando = false;
@@ -154,15 +165,35 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
           .map((j) => ExecucaoCorte.fromJson(j as Map<String, dynamic>))
           .toList();
 
-      final historico = [
-        for (final grupo in (respostas[1] as List))
-          for (final e in (grupo['execucoes'] as List))
-            ExecucaoCorte.fromJson(e as Map<String, dynamic>),
-      ]..sort((a, b) {
-          final porData = (b.dataCadastro ?? DateTime(0))
-              .compareTo(a.dataCadastro ?? DateTime(0));
-          return porData != 0 ? porData : b.id.compareTo(a.id);
-        });
+      // envio = cortes da mesma peça cadastrados no mesmo instante
+      final envios = <String, EnvioHistorico>{};
+      for (final grupo in (respostas[1] as List)) {
+        for (final j in (grupo['execucoes'] as List)) {
+          final e = ExecucaoCorte.fromJson(j as Map<String, dynamic>);
+          final chave =
+              '${grupo['id_peca']}-${e.dataCadastro?.millisecondsSinceEpoch}';
+          envios
+              .putIfAbsent(
+                chave,
+                () => EnvioHistorico(
+                  nomePeca: e.nomePeca,
+                  dataCadastro: e.dataCadastro,
+                ),
+              )
+              .execucoes
+              .add(e);
+        }
+      }
+
+      final historico = envios.values.toList();
+      for (final envio in historico) {
+        envio.execucoes.sort((a, b) => a.id.compareTo(b.id));
+      }
+      historico.sort((a, b) {
+        final porData = (b.dataCadastro ?? DateTime(0))
+            .compareTo(a.dataCadastro ?? DateTime(0));
+        return porData != 0 ? porData : b.id.compareTo(a.id);
+      });
 
       if (!mounted) return;
       setState(() {
@@ -477,8 +508,8 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
     final itens = <Widget>[];
     DateTime? diaAtual;
 
-    for (final exec in _historico) {
-      final data = exec.dataCadastro;
+    for (final envio in _historico) {
+      final data = envio.dataCadastro;
       if (data != null) {
         final dia = DateTime(data.year, data.month, data.day);
         if (diaAtual != dia) {
@@ -489,7 +520,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
           diaAtual = dia;
         }
       }
-      itens.add(_buildCardHistorico(exec));
+      itens.add(_buildCardHistorico(envio));
     }
 
     return itens;
@@ -518,12 +549,13 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
     );
   }
 
+    // ============================================
+  // collapse de um envio (peça + horário)
   // ============================================
-  // collapse de uma execução do histórico
-  // ============================================
-  Widget _buildCardHistorico(ExecucaoCorte exec) {
-    final expandido = _abertas.contains(exec.id);
-    final temErro = exec.fios.any((f) => f.status == 'E');
+  Widget _buildCardHistorico(EnvioHistorico envio) {
+    final expandido = _abertas.contains(envio.id);
+    final temErro =
+        envio.execucoes.any((e) => e.fios.any((f) => f.status == 'E'));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -544,9 +576,9 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
           GestureDetector(
             onTap: () => setState(() {
               if (expandido) {
-                _abertas.remove(exec.id);
+                _abertas.remove(envio.id);
               } else {
-                _abertas.add(exec.id);
+                _abertas.add(envio.id);
               }
             }),
             child: Padding(
@@ -560,7 +592,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          exec.nomePeca,
+                          envio.nomePeca,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -569,9 +601,9 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
                             color: AppColors.green,
                           ),
                         ),
-                        if (exec.dataCadastro != null)
+                        if (envio.dataCadastro != null)
                           Text(
-                            formatarDiaHora(exec.dataCadastro!),
+                            formatarDiaHora(envio.dataCadastro!),
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.green.withOpacity(0.6),
@@ -596,49 +628,54 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
             ),
           ),
 
+          // cortes do envio dentro do collapse
           if (expandido)
-            Container(
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(6),
-                  bottomLeft: Radius.circular(6),
-                  bottomRight: Radius.circular(30),
-                ),
-                border: Border.all(color: AppColors.bordaMarrom, width: 1),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.content_cut_outlined, size: 18, color: AppColors.green),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${exec.quantidade} cortes de ${_formatarMetros(exec.metragem)} metros',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textoPreto),
-                        ),
-                        Text(
-                          '(${exec.fiosConcluidos}/${exec.quantidade}) concluídos',
-                          style: TextStyle(fontSize: 11, color: AppColors.textoPreto),
-                        ),
-                      ],
+            Column(
+              children: envio.execucoes.map((exec) {
+                return Container(
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(6),
+                      bottomLeft: Radius.circular(6),
+                      bottomRight: Radius.circular(30),
                     ),
+                    border: Border.all(color: AppColors.bordaMarrom, width: 1),
                   ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.content_cut_outlined, size: 18, color: AppColors.green),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${exec.quantidade} cortes de ${_formatarMetros(exec.metragem)} metros',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textoPreto),
+                            ),
+                            Text(
+                              '(${exec.fiosConcluidos}/${exec.quantidade}) concluídos',
+                              style: TextStyle(fontSize: 11, color: AppColors.textoPreto),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                  // ícone de alerta se tiver fio com erro
-                  if (temErro)
-                    GestureDetector(
-                      onTap: () => _abrirDetalhes(exec),
-                      child: Icon(Icons.warning_amber_rounded,
-                          color: const Color.fromARGB(255, 117, 17, 2), size: 20),
-                    ),
-                ],
-              ),
+                      // ícone de alerta se tiver fio com erro
+                      if (exec.fios.any((f) => f.status == 'E'))
+                        GestureDetector(
+                          onTap: () => _abrirDetalhes(exec),
+                          child: Icon(Icons.warning_amber_rounded,
+                              color: const Color.fromARGB(255, 117, 17, 2), size: 20),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
         ],
       ),
