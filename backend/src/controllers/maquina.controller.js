@@ -229,8 +229,22 @@ const resultado = async (req, res) => {
       [idExecucao]
     );
     const { total, pendentes, com_erro } = resumo.rows[0];
+    const loteFinalizado = Number(pendentes) === 0;
 
-    if (Number(pendentes) === 0) {
+    if (loteFinalizado) {
+      await client.query(
+        `UPDATE EXECUCAO_CORTE
+         SET SITUACAO = $1, DATA_FIM = NOW()
+         WHERE ID_EXECUCAO = $2`,
+        [Number(com_erro) > 0 ? 'E' : 'C', idExecucao]
+      );
+    }
+
+    await client.query('COMMIT');
+    avisar(idUsuario, 'fila');
+
+    if (loteFinalizado) {
+      avisar(idUsuario, 'status');
       notificarFimDoLote({
         idUsuario,
         idExecucao,
@@ -239,10 +253,7 @@ const resultado = async (req, res) => {
       }).catch((e) => console.error('[notificar]', e.message));
     }
 
-    await client.query('COMMIT');
-    avisar(idUsuario, 'fila');
-    if (Number(pendentes) === 0) avisar(idUsuario, 'status');
-    res.json({ ok: true, lote_finalizado: Number(pendentes) === 0 });
+    res.json({ ok: true, lote_finalizado: loteFinalizado });
   } catch (erro) {
     await client.query('ROLLBACK');
     console.error(erro);
