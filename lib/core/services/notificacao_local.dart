@@ -12,8 +12,11 @@ class NotificacaoLocal {
   static const _canalId = 'automacao_cortes';
   static const _canalNome = 'Avisos da máquina';
 
+  final ValueNotifier<int> abrirNotificacoes = ValueNotifier<int>(0);
+
   final _plugin = FlutterLocalNotificationsPlugin();
-  StreamSubscription<RemoteMessage>? _assinatura;
+  StreamSubscription<RemoteMessage>? _assinaturaMensagem;
+  StreamSubscription<RemoteMessage>? _assinaturaToque;
   bool _pronto = false;
 
   Future<void> iniciar() async {
@@ -24,6 +27,7 @@ class NotificacaoLocal {
         settings: const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         ),
+        onDidReceiveNotificationResponse: (_) => abrirNotificacoes.value++,
       );
 
       await _plugin
@@ -38,7 +42,14 @@ class NotificacaoLocal {
             ),
           );
 
-      _assinatura = FirebaseMessaging.onMessage.listen(_aoReceber);
+      _assinaturaMensagem = FirebaseMessaging.onMessage.listen(_aoReceber);
+
+      _assinaturaToque = FirebaseMessaging.onMessageOpenedApp
+          .listen((_) => abrirNotificacoes.value++);
+
+      final inicial = await FirebaseMessaging.instance.getInitialMessage();
+      if (inicial != null) abrirNotificacoes.value++;
+
       _pronto = true;
     } catch (e) {
       debugPrint('Notificação local não iniciou: $e');
@@ -62,6 +73,7 @@ class NotificacaoLocal {
             priority: Priority.high,
           ),
         ),
+        payload: 'notificacoes',
       );
     } catch (e) {
       debugPrint('Não mostrou a notificação: $e');
@@ -69,8 +81,10 @@ class NotificacaoLocal {
   }
 
   Future<void> parar() async {
-    await _assinatura?.cancel();
-    _assinatura = null;
+    await _assinaturaMensagem?.cancel();
+    await _assinaturaToque?.cancel();
+    _assinaturaMensagem = null;
+    _assinaturaToque = null;
     _pronto = false;
   }
 }

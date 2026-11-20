@@ -37,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     TempoReal.instance.notificacoes.addListener(_aoAvisoNotificacoes);
     TempoReal.instance.conectar();
+    NotificacaoLocal.instance.abrirNotificacoes.addListener(_abrirAbaNotificacoes);
     NotificacaoLocal.instance.iniciar();
     PushService.instance.iniciar();
   }
@@ -47,12 +48,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _timerContador?.cancel();
 
     TempoReal.instance.notificacoes.removeListener(_aoAvisoNotificacoes);
+    NotificacaoLocal.instance.abrirNotificacoes.removeListener(_abrirAbaNotificacoes);
     TempoReal.instance.desconectar();
 
     super.dispose();
   }
 
   void _aoAvisoNotificacoes() => NotificacoesContador.instance.atualizar();
+
+  void _abrirAbaNotificacoes() {
+    if (!mounted) return;
+    final rotaHome = ModalRoute.of(context);
+    Navigator.of(context).popUntil((rota) => rota == rotaHome);
+    setState(() => _indiceSelecionado = 3);
+  }
 
   void _iniciarTimerContador() {
     _timerContador?.cancel();

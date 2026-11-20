@@ -43,7 +43,10 @@ async function enviarPush(idUsuario, { titulo, corpo, dados = {} }) {
       data: Object.fromEntries(
         Object.entries(dados).map(([k, v]) => [k, String(v)])
       ),
-      android: { priority: 'high' },
+      android: {
+        priority: 'high',
+        notification: { channelId: 'automacao_cortes' },
+      },
     });
 
     // apaga tokens
