@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/api_service.dart';
-import '../../core/services/notificacoes_contador.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/notificacoes_provider.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/titulo_banner.dart';
@@ -25,18 +27,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _indiceSelecionado = 2;
 
-  Timer? _timerContador;
+  StreamSubscription<RemoteMessage>? _assinaturaPush;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    NotificacoesContador.instance.zerar();
-    NotificacoesContador.instance.atualizar();
-    _iniciarTimerContador();
+
+    final notificacoes = context.read<NotificacoesProvider>();
+    notificacoes.zerar();
+    notificacoes.atualizar();
 
     TempoReal.instance.notificacoes.addListener(_aoAvisoNotificacoes);
     TempoReal.instance.conectar();
+
+    _assinaturaPush =
+        FirebaseMessaging.onMessage.listen((_) => _aoAvisoNotificacoes());
+
     NotificacaoLocal.instance.abrirNotificacoes.addListener(_abrirAbaNotificacoes);
     NotificacaoLocal.instance.iniciar();
     PushService.instance.iniciar();
@@ -45,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _timerContador?.cancel();
+    _assinaturaPush?.cancel();
 
     TempoReal.instance.notificacoes.removeListener(_aoAvisoNotificacoes);
     NotificacaoLocal.instance.abrirNotificacoes.removeListener(_abrirAbaNotificacoes);
@@ -54,7 +61,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  void _aoAvisoNotificacoes() => NotificacoesContador.instance.atualizar();
+  void _aoAvisoNotificacoes() {
+    if (!mounted) return;
+    context.read<NotificacoesProvider>().atualizar();
+  }
 
   void _abrirAbaNotificacoes() {
     if (!mounted) return;
@@ -63,21 +73,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() => _indiceSelecionado = 3);
   }
 
-  void _iniciarTimerContador() {
-    _timerContador?.cancel();
-    _timerContador = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => NotificacoesContador.instance.atualizar(),
-    );
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      NotificacoesContador.instance.atualizar();
-      _iniciarTimerContador();
-    } else if (state == AppLifecycleState.paused) {
-      _timerContador?.cancel();
+      _aoAvisoNotificacoes();
     }
   }
 

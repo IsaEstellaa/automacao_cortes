@@ -1,7 +1,8 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../services/notificacoes_contador.dart';
+import 'package:provider/provider.dart';
+import '../providers/notificacoes_provider.dart';
 
 class AppBottomNav extends StatelessWidget {
   final int indiceSelecionado;
@@ -79,9 +80,9 @@ class AppBottomNav extends StatelessWidget {
   // bolinha com o número de notificações não vistas
   // some sozinha quando não há nenhuma
   Widget _buildBadge() {
-    return ValueListenableBuilder<int>(
-      valueListenable: NotificacoesContador.instance.naoVistas,
-      builder: (_, total, __) {
+    return Consumer<NotificacoesProvider>(
+      builder: (_, notificacoes, __) {
+        final total = notificacoes.naoVistas;
         if (total <= 0) return const SizedBox.shrink();
 
         return Container(

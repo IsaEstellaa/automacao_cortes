@@ -3,7 +3,8 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/estado_erro.dart';
-import '../../core/services/notificacoes_contador.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/notificacoes_provider.dart';
 import '../../core/utils/formatadores_data.dart';
 
 // icone da notificacao
@@ -109,7 +110,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
         _notificacoes = lista;
         _erro = null;
       });
-      NotificacoesContador.instance.atualizar();
+      context.read<NotificacoesProvider>().atualizar();
     } on ApiException catch (e) {
       if (!mounted) return;
       if (recarga) {
@@ -126,7 +127,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
     if (notificacao.visto) return;
 
     setState(() => notificacao.visto = true);
-    NotificacoesContador.instance.diminuir();
+    context.read<NotificacoesProvider>().diminuir();
 
     try {
       await ApiService.instance.patch(
@@ -136,7 +137,7 @@ class _NotificacoesContentState extends State<NotificacoesContent> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => notificacao.visto = false);
-      NotificacoesContador.instance.atualizar();
+      context.read<NotificacoesProvider>().atualizar();
       _mostrarAviso(e.mensagem);
     }
   }
