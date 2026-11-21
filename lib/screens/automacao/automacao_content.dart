@@ -6,94 +6,17 @@ import 'modal_detalhes_corte.dart';
 import '../corte/novo_corte_screen.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/estado_erro.dart';
-import '../../core/services/tempo_real.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/fila_provider.dart';
 import '../../core/utils/formatadores_data.dart';
 
 // ============================================
 // modelos de dados
 // ============================================
 
-DateTime? _paraData(dynamic valor) =>
-    valor == null ? null : DateTime.tryParse(valor.toString());
-
 // 5.00 vira "5" e 2.50 vira "2.5"
 String _formatarMetros(double valor) =>
     valor.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
-
-class FioExecucao {
-  final int id;
-  final String status; // P=pendente, C=concluído, E=erro
-
-  FioExecucao({required this.id, required this.status});
-
-  factory FioExecucao.fromJson(Map<String, dynamic> json) {
-    return FioExecucao(
-      id: json['id_fio'] as int,
-      status: json['status'] as String,
-    );
-  }
-}
-
-class ExecucaoCorte {
-  final int id;
-  final String nomePeca;
-  final int quantidade;
-  final double metragem;
-  final List<FioExecucao> fios;
-  final String situacao; // A=aguardando, P=processando, C=concluído, E=com erro
-  final DateTime? dataInicio;
-  final DateTime? dataFim;
-  final DateTime? dataCadastro;
-  final bool retentativa; // true = fios sendo refeitos (não um corte novo)
-
-  ExecucaoCorte({
-    required this.id,
-    required this.nomePeca,
-    required this.quantidade,
-    required this.metragem,
-    required this.fios,
-    required this.situacao,
-    this.dataInicio,
-    this.dataFim,
-    this.dataCadastro,
-    this.retentativa = false,
-  });
-
-  factory ExecucaoCorte.fromJson(Map<String, dynamic> json) {
-    return ExecucaoCorte(
-      id: json['id_execucao'] as int,
-      nomePeca: json['nome_peca'] as String,
-      quantidade: (json['quantidade'] as num).toInt(),
-      metragem: double.tryParse(json['metragem'].toString()) ?? 0,
-      situacao: json['situacao'] as String,
-      dataInicio: _paraData(json['data_inicio']),
-      dataFim: _paraData(json['data_fim']),
-      dataCadastro: _paraData(json['data_cadastro'])?.toLocal(),
-      fios: (json['fios'] as List)
-          .map((f) => FioExecucao.fromJson(f as Map<String, dynamic>))
-          .toList(),
-      retentativa: json['retentativa'] == true,
-    );
-  }
-
-  // cálculos baseados nos fios
-  int get fiosConcluidos => fios.where((f) => f.status == 'C').length;
-  int get fiosPendentes => fios.where((f) => f.status == 'P').length;
-  double get metragemCortada => fiosConcluidos * metragem;
-  double get metragemRestante => fiosPendentes * metragem;
-  double get progresso => quantidade > 0 ? fiosConcluidos / quantidade : 0;
-}
-
-// cortes da mesma peça enviados juntos
-class EnvioHistorico {
-  final String nomePeca;
-  final DateTime? dataCadastro;
-  final List<ExecucaoCorte> execucoes = [];
-
-  EnvioHistorico({required this.nomePeca, required this.dataCadastro});
-
-  int get id => execucoes.first.id;
-}
 
 // ============================================
 // tela de automação
@@ -107,21 +30,18 @@ class AutomacaoContent extends StatefulWidget {
 
 class _AutomacaoContentState extends State<AutomacaoContent> {
 
-  List<ExecucaoCorte> _fila = [];
-  List<EnvioHistorico> _historico = [];
   final Set<int> _abertas = {};
-  bool _carregando = true;
-  bool _buscando = false;
-  bool _recarregar = false;
-  String? _erro;
   Timer? _relogio;
+
+  // estado vem do FilaProvider
+  FilaProvider get _provider => context.read<FilaProvider>();
+  List<ExecucaoCorte> get _fila => _provider.fila;
+  List<EnvioHistorico> get _historico => _provider.historico;
 
   @override
   void initState() {
     super.initState();
-    _carregar();
-
-    TempoReal.instance.fila.addListener(_aoAvisoFila);
+    _provider.carregar();
 
     _relogio = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _fila.isNotEmpty) setState(() {});
@@ -130,89 +50,8 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
 
   @override
   void dispose() {
-    TempoReal.instance.fila.removeListener(_aoAvisoFila);
     _relogio?.cancel();
     super.dispose();
-  }
-
-  void _aoAvisoFila() => _carregar(silencioso: true);
-
-  // ============================================
-  // busca fila e histórico na API
-  // silencioso = atualização automática, se falhar, mantém
-  // ============================================
-  Future<void> _carregar({bool silencioso = false}) async {
-    if (_buscando) {
-      _recarregar = true;
-      return;
-    }
-    _buscando = true;
-
-    if (!silencioso) {
-      setState(() {
-        _carregando = true;
-        _erro = null;
-      });
-    }
-
-    try {
-      final respostas = await Future.wait([
-        ApiService.instance.get('/execucoes/fila'),
-        ApiService.instance.get('/execucoes/historico'),
-      ]);
-
-      final fila = (respostas[0] as List)
-          .map((j) => ExecucaoCorte.fromJson(j as Map<String, dynamic>))
-          .toList();
-
-      // envio = cortes da mesma peça cadastrados no mesmo instante
-      final envios = <String, EnvioHistorico>{};
-      for (final grupo in (respostas[1] as List)) {
-        for (final j in (grupo['execucoes'] as List)) {
-          final e = ExecucaoCorte.fromJson(j as Map<String, dynamic>);
-          final chave =
-              '${grupo['id_peca']}-${e.dataCadastro?.millisecondsSinceEpoch}';
-          envios
-              .putIfAbsent(
-                chave,
-                () => EnvioHistorico(
-                  nomePeca: e.nomePeca,
-                  dataCadastro: e.dataCadastro,
-                ),
-              )
-              .execucoes
-              .add(e);
-        }
-      }
-
-      final historico = envios.values.toList();
-      for (final envio in historico) {
-        envio.execucoes.sort((a, b) => a.id.compareTo(b.id));
-      }
-      historico.sort((a, b) {
-        final porData = (b.dataCadastro ?? DateTime(0))
-            .compareTo(a.dataCadastro ?? DateTime(0));
-        return porData != 0 ? porData : b.id.compareTo(a.id);
-      });
-
-      if (!mounted) return;
-      setState(() {
-        _fila = fila;
-        _historico = historico;
-        _erro = null;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      if (!silencioso) setState(() => _erro = e.mensagem);
-    } finally {
-      _buscando = false;
-      if (mounted && !silencioso) setState(() => _carregando = false);
-
-      if (_recarregar && mounted) {
-        _recarregar = false;
-        _carregar(silencioso: true);
-      }
-    }
   }
   
   Future<void> _abrirNovoCorte() async {
@@ -221,7 +60,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
       MaterialPageRoute(builder: (_) => const NovoCorteScreen()),
     );
 
-    if (enviou == true) _carregar(silencioso: true);
+    if (enviou == true && mounted) _provider.carregar();
   }
 
   Future<void> _abrirDetalhes(ExecucaoCorte exec) async {
@@ -250,10 +89,11 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
   }
 
   Future<void> _retentar(ExecucaoCorte exec) async {
+    final provider = _provider;
     try {
       await ApiService.instance.post('/execucoes/${exec.id}/retentar');
       _mostrarAviso('Retentativa enviada para a máquina!');
-      _carregar(silencioso: true);
+      provider.carregar();
     } on ApiException catch (e) {
       _mostrarAviso(e.mensagem);
     }
@@ -276,18 +116,24 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
   }
 
   @override
+    @override
   Widget build(BuildContext context) {
-    if (_carregando) {
+    final provider = context.watch<FilaProvider>();
+
+    if (provider.carregando) {
       return Center(child: CircularProgressIndicator(color: AppColors.green));
     }
 
-    if (_erro != null) {
-      return EstadoErro(mensagem: _erro!, aoTentarNovamente: _carregar);
+    if (provider.erro != null) {
+      return EstadoErro(
+        mensagem: provider.erro!,
+        aoTentarNovamente: () => provider.carregar(recomecar: true),
+      );
     }
 
     return RefreshIndicator(
       color: AppColors.green,
-      onRefresh: () => _carregar(silencioso: true),
+      onRefresh: () => provider.carregar(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),

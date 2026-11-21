@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/notificacoes_provider.dart';
 import '../../core/providers/status_maquina_provider.dart';
+import '../../core/providers/fila_provider.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/titulo_banner.dart';
@@ -44,11 +45,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     statusMaquina.carregar();
     TempoReal.instance.status.addListener(_aoAvisoStatus);
 
+    final fila = context.read<FilaProvider>();
+    fila.reiniciar();
+    fila.carregar();
+    TempoReal.instance.fila.addListener(_aoAvisoFila);
+
     TempoReal.instance.notificacoes.addListener(_aoAvisoNotificacoes);
     TempoReal.instance.conectar();
 
     _assinaturaPush =
-        FirebaseMessaging.onMessage.listen((_) => _aoAvisoNotificacoes());
+        FirebaseMessaging.onMessage.listen((_) => _atualizarTudo());
 
     NotificacaoLocal.instance.abrirNotificacoes.addListener(_abrirAbaNotificacoes);
     NotificacaoLocal.instance.iniciar();
@@ -62,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     TempoReal.instance.notificacoes.removeListener(_aoAvisoNotificacoes);
     TempoReal.instance.status.removeListener(_aoAvisoStatus);
+    TempoReal.instance.fila.removeListener(_aoAvisoFila);
     NotificacaoLocal.instance.abrirNotificacoes.removeListener(_abrirAbaNotificacoes);
     TempoReal.instance.desconectar();
 
@@ -78,6 +85,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     context.read<StatusMaquinaProvider>().carregar();
   }
 
+  void _aoAvisoFila() {
+    if (!mounted) return;
+    context.read<FilaProvider>().carregar();
+  }
+
+  void _atualizarTudo() {
+    _aoAvisoNotificacoes();
+    _aoAvisoStatus();
+    _aoAvisoFila();
+  }
+
   void _abrirAbaNotificacoes() {
     if (!mounted) return;
     final rotaHome = ModalRoute.of(context);
@@ -88,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _aoAvisoNotificacoes();
+      _atualizarTudo();
     }
   }
 

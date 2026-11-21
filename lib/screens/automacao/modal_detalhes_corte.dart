@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/fita_decorativa.dart';
-import 'automacao_content.dart';
+import '../../core/providers/fila_provider.dart';
 
 // ============================================
 // modelo de log de fio (virá do backend)

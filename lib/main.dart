@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'core/providers/notificacoes_provider.dart';
 import 'core/providers/status_maquina_provider.dart';
+import 'core/providers/fila_provider.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => NotificacoesProvider()),
         ChangeNotifierProvider(create: (_) => StatusMaquinaProvider()),
+        ChangeNotifierProvider(create: (_) => FilaProvider()),
       ],
       child: MaterialApp(
         title: 'Flutter Demo',
