@@ -5,6 +5,7 @@ import 'screens/login/login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'core/providers/notificacoes_provider.dart';
+import 'core/providers/status_maquina_provider.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => NotificacoesProvider()),
+        ChangeNotifierProvider(create: (_) => StatusMaquinaProvider()),
       ],
       child: MaterialApp(
         title: 'Flutter Demo',

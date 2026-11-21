@@ -6,7 +6,8 @@ import '../../core/services/api_service.dart';
 import '../../core/widgets/modal_confirmacao.dart';
 import '../../core/widgets/painters.dart';
 import '../../core/widgets/titulo_banner.dart';
-import '../../core/services/tempo_real.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/status_maquina_provider.dart';
 
 class MinhaMaquinaScreen extends StatefulWidget {
   const MinhaMaquinaScreen({super.key});
@@ -16,55 +17,18 @@ class MinhaMaquinaScreen extends StatefulWidget {
 }
 
 class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
-  bool _carregando = true;
   bool _ocupado = false;
-  String? _erro;
-  Map<String, dynamic>? _maquina;
+
+  // estado vem do StatusMaquinaProvider
+  StatusMaquinaProvider get _status => context.read<StatusMaquinaProvider>();
+  bool get _carregando => _status.carregando;
+  String? get _erro => _status.erro;
+  Map<String, dynamic>? get _maquina => _status.maquina;
 
   @override
   void initState() {
     super.initState();
-    _carregar();
-    TempoReal.instance.status.addListener(_aoAvisoStatus);
-  }
-
-  @override
-  void dispose() {
-    TempoReal.instance.status.removeListener(_aoAvisoStatus);
-    super.dispose();
-  }
-
-  void _aoAvisoStatus() => _carregar(silencioso: true);
-
-  // ============================================
-  // dados
-  // ============================================
-  Future<void> _carregar({bool silencioso = false}) async {
-    if (!silencioso) {
-      setState(() {
-        _carregando = true;
-        _erro = null;
-      });
-    }
-
-    try {
-      final dados = await ApiService.instance.get('/maquinas/status');
-      final lista = dados as List;
-      if (!mounted) return;
-      setState(() {
-        _maquina = lista.isEmpty
-            ? null
-            : Map<String, dynamic>.from(lista.first as Map);
-        _carregando = false;
-        _erro = null;
-      });
-    } on ApiException catch (e) {
-      if (!mounted || silencioso) return;
-      setState(() {
-        _erro = e.mensagem;
-        _carregando = false;
-      });
-    }
+    _status.carregar();
   }
 
   Future<void> _executar(Future<void> Function() acao) async {
@@ -88,6 +52,7 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
   // ações
   // ============================================
   Future<void> _cadastrar() async {
+    final status = _status;
     final nome = await showDialog<String>(
       context: context,
       builder: (_) => const _DialogNome(
@@ -100,12 +65,13 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
 
     await _executar(() async {
       final r = await ApiService.instance.post('/maquinas', {'nome': nome});
-      await _carregar(silencioso: true);
+      await status.carregar();
       await _mostrarChave((r as Map)['chave'] as String);
     });
   }
 
   Future<void> _renomear() async {
+    final status = _status;
     final atual = _maquina!;
     final nome = await showDialog<String>(
       context: context,
@@ -122,11 +88,12 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
         '/maquinas/${atual['id_maquina']}',
         {'nome': nome},
       );
-      await _carregar(silencioso: true);
+      await status.carregar();
     });
   }
 
   void _novaChave() {
+    final status = _status;
     final id = _maquina!['id_maquina'];
     ModalConfirmacao.mostrar(
       context,
@@ -137,13 +104,14 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
       corBotao: AppColors.buttonRed,
       aoConfirmar: () => _executar(() async {
         final r = await ApiService.instance.post('/maquinas/$id/chave');
-        await _carregar(silencioso: true);
+        await status.carregar();
         await _mostrarChave((r as Map)['chave'] as String);
       }),
     );
   }
 
   void _remover() {
+    final status = _status;
     final id = _maquina!['id_maquina'];
     ModalConfirmacao.mostrar(
       context,
@@ -154,7 +122,7 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
       corBotao: AppColors.buttonRed,
       aoConfirmar: () => _executar(() async {
         await ApiService.instance.delete('/maquinas/$id');
-        await _carregar(silencioso: true);
+        await status.carregar();
       }),
     );
   }
@@ -268,6 +236,7 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
   // ============================================
   @override
   Widget build(BuildContext context) {
+    context.watch<StatusMaquinaProvider>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -280,7 +249,7 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
       ),
       body: RefreshIndicator(
         color: AppColors.green,
-        onRefresh: () => _carregar(silencioso: true),
+        onRefresh: () => _status.carregar(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -324,7 +293,7 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => _carregar(),
+              onPressed: () => _status.carregar(recomecar: true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.green,
                 foregroundColor: Colors.white,

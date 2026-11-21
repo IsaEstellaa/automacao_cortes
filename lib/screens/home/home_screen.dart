@@ -5,6 +5,7 @@ import '../../core/services/api_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/notificacoes_provider.dart';
+import '../../core/providers/status_maquina_provider.dart';
 import '../../core/widgets/app_header.dart';
 import '../../core/widgets/bottom_nav.dart';
 import '../../core/widgets/titulo_banner.dart';
@@ -38,6 +39,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     notificacoes.zerar();
     notificacoes.atualizar();
 
+    final statusMaquina = context.read<StatusMaquinaProvider>();
+    statusMaquina.reiniciar();
+    statusMaquina.carregar();
+    TempoReal.instance.status.addListener(_aoAvisoStatus);
+
     TempoReal.instance.notificacoes.addListener(_aoAvisoNotificacoes);
     TempoReal.instance.conectar();
 
@@ -55,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _assinaturaPush?.cancel();
 
     TempoReal.instance.notificacoes.removeListener(_aoAvisoNotificacoes);
+    TempoReal.instance.status.removeListener(_aoAvisoStatus);
     NotificacaoLocal.instance.abrirNotificacoes.removeListener(_abrirAbaNotificacoes);
     TempoReal.instance.desconectar();
 
@@ -64,6 +71,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _aoAvisoNotificacoes() {
     if (!mounted) return;
     context.read<NotificacoesProvider>().atualizar();
+  }
+
+  void _aoAvisoStatus() {
+    if (!mounted) return;
+    context.read<StatusMaquinaProvider>().carregar();
   }
 
   void _abrirAbaNotificacoes() {

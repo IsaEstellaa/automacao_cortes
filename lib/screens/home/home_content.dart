@@ -1,5 +1,4 @@
 import 'dart:async';
-import '../../core/services/api_service.dart';
 import '../maquina/minha_maquina_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
@@ -9,16 +8,8 @@ import '../../core/widgets/fita_decorativa.dart';
 import '../../core/widgets/botao_novo_corte.dart';
 import '../corte/novo_corte_screen.dart';
 import '../materiais/materiais_screen.dart';
-import '../../core/services/tempo_real.dart';
-
-// enum com os possíveis estados da máquina
-enum StatusMaquina {
-  verificando,
-  semMaquina,
-  aguardando,
-  trabalhando,
-  naoEncontrada,
-}
+import 'package:provider/provider.dart';
+import '../../core/providers/status_maquina_provider.dart';
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -28,60 +19,16 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
-  // estado vem de GET /maquinas/status
-  StatusMaquina _statusAtual = StatusMaquina.verificando;
-  int _busca = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _carregarStatus();
-    TempoReal.instance.status.addListener(_aoAvisoStatus);
-  }
-
-  @override
-  void dispose() {
-    TempoReal.instance.status.removeListener(_aoAvisoStatus);
-    super.dispose();
-  }
-
-  void _aoAvisoStatus() => _carregarStatus();
-
-  Future<void> _carregarStatus() async {
-    final minhaBusca = ++_busca;
-    StatusMaquina novo;
-    try {
-      final dados = await ApiService.instance.get('/maquinas/status');
-      final lista = dados as List;
-
-      if (lista.isEmpty) {
-        novo = StatusMaquina.semMaquina;
-      } else {
-        final m = lista.first as Map;
-        if (m['online'] != true) {
-          novo = StatusMaquina.naoEncontrada;
-        } else if (m['trabalhando'] == true) {
-          novo = StatusMaquina.trabalhando;
-        } else {
-          novo = StatusMaquina.aguardando;
-        }
-      }
-    } on ApiException {
-      // sem resposta: mantém
-      if (_statusAtual != StatusMaquina.verificando) return;
-      novo = StatusMaquina.naoEncontrada;
-    }
-
-    if (!mounted || minhaBusca != _busca || novo == _statusAtual) return;
-    setState(() => _statusAtual = novo);
-  }
+  // estado vem do StatusMaquinaProvider
+  StatusMaquina get _statusAtual =>
+      context.watch<StatusMaquinaProvider>().status;
 
   Future<void> _abrirMinhaMaquina() async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const MinhaMaquinaScreen()),
     );
-    if (mounted) _carregarStatus();
+    if (mounted) context.read<StatusMaquinaProvider>().carregar();
   }
 
   // mapeamento dos estados da maquina
@@ -445,53 +392,3 @@ Widget _itemCausa(String texto) {
     ),
   );
 }
-
-// void _mostrarModalAjuda(BuildContext context) {
-//   showModalBottomSheet(
-//     context: context,
-//     shape: RoundedRectangleBorder(
-//       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-//     ),
-//     backgroundColor: AppColors.card,
-//     builder: (_) => Padding(
-//       padding: const EdgeInsets.all(24),
-//       child: Column(
-//         mainAxisSize: MainAxisSize.min, // ocupa só o necessário
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             'O que pode ter acontecido?',
-//             style: TextStyle(
-//               fontSize: 18,
-//               fontWeight: FontWeight.bold,
-//               color: AppColors.green,
-//             ),
-//           ),
-//           const SizedBox(height: 16),
-//           _itemModal(Icons.wifi_off_outlined, 'Verifique sua conexão com a internet'),
-//           _itemModal(Icons.power_off_outlined, 'Verifique se a máquina está ligada'),
-//           _itemModal(Icons.bluetooth_disabled_outlined, 'Verifique se o bluetooth está ativo'),
-//           const SizedBox(height: 8),
-//         ],
-//       ),
-//     ),
-//   );
-// }
-
-// Widget _itemModal(IconData icone, String texto) {
-//   return Padding(
-//     padding: const EdgeInsets.symmetric(vertical: 8),
-//     child: Row(
-//       children: [
-//         Icon(icone, color: AppColors.green, size: 24),
-//         const SizedBox(width: 12),
-//         Expanded(
-//           child: Text(
-//             texto,
-//             style: TextStyle(fontSize: 15, color: AppColors.green),
-//           ),
-//         ),
-//       ],
-//     ),
-//   );
-// }
