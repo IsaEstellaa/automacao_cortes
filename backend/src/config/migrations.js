@@ -70,7 +70,8 @@ const criarTabelas = async () => {
         DESCRICAO TEXT,
         SITUACAO CHAR(1) DEFAULT 'A',
         DATA_CADASTRO TIMESTAMP DEFAULT NOW(),
-        ULTIMA_MODIFICACAO TIMESTAMP DEFAULT NOW()
+        ULTIMA_MODIFICACAO TIMESTAMP DEFAULT NOW(),
+        FAVORITO CHAR(1) NOT NULL DEFAULT 'N'
       );
     `);
     await pool.query(`

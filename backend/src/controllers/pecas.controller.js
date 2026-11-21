@@ -68,6 +68,7 @@ const buscarPecaComCortes = async (client, idPeca, idUsuario) => {
 
   return {
     ...peca.rows[0],
+    favorito: peca.rows[0].favorito === 'S',
     cortes: cortes.rows,
     fotos: formatarFotos(fotos, peca.rows[0].id_peca),
   };
@@ -153,6 +154,7 @@ const listar = async (req, res) => {
 
     const resultado = pecas.rows.map((p) => ({
       ...p,
+      favorito: p.favorito === 'S',
       cortes: cortes.rows.filter((c) => c.id_peca === p.id_peca),
       fotos: formatarFotos(fotos, p.id_peca),
     }));
@@ -441,4 +443,40 @@ const excluirFoto = async (req, res) => {
   }
 };
 
-module.exports = { criar, listar, buscarPorId, atualizar, excluir, adicionarFoto, excluirFoto };
+// ============================================
+// marcar ou desmarcar peça como favorita
+// ============================================
+const definirFavorito = async (req, res) => {
+  const idPeca = Number(req.params.id);
+  const { favorito } = req.body;
+
+  if (!Number.isInteger(idPeca)) {
+    return res.status(400).json({ erro: 'Id da peça inválido!' });
+  }
+
+  if (typeof favorito !== 'boolean') {
+    return res.status(400).json({ erro: 'Informe "favorito" como true ou false!' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `UPDATE PECA
+       SET FAVORITO = $1
+       WHERE ID_PECA = $2 AND ID_USUARIO = $3 AND SITUACAO = 'A'
+       RETURNING ID_PECA`,
+      [favorito ? 'S' : 'N', idPeca, req.usuarioId]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ erro: 'Peça não encontrada!' });
+    }
+
+    return res.status(200).json({ id_peca: idPeca, favorito });
+
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+};
+
+module.exports = { criar, listar, buscarPorId, atualizar, excluir, adicionarFoto, excluirFoto, definirFavorito };
