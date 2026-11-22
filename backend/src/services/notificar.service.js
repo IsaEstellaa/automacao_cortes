@@ -82,4 +82,52 @@ const notificarFimDoLote = async ({ idUsuario, idExecucao, houveErro, totalFios 
   });
 };
 
-module.exports = { notificar, entregarNotificacao, notificarFimDoLote };
+// fim da retentativa
+const notificarFimDaRetentativa = async ({ idUsuario, idExecucao, concluidos, falhas }) => {
+  const total = concluidos + falhas;
+
+  const origem = await pool.query(
+    `SELECT C.ID_CORTE, C.ID_PECA
+     FROM EXECUCAO_CORTE E
+     JOIN CORTE C ON C.ID_CORTE = E.ID_CORTE
+     WHERE E.ID_EXECUCAO = $1`,
+    [idExecucao]
+  );
+  const idCorte = origem.rows[0]?.id_corte ?? null;
+  const idPeca = origem.rows[0]?.id_peca ?? null;
+
+  if (falhas === 0) {
+    return notificar({
+      idUsuario, idPeca, idCorte,
+      tipo: 'S',
+      titulo: 'Retentativa concluída',
+      mensagem:
+        total === 1
+          ? 'O fio que falhou foi cortado com sucesso na nova tentativa.'
+          : `Os ${total} fios que falharam foram cortados com sucesso na nova tentativa.`,
+    });
+  }
+
+  if (concluidos === 0) {
+    return notificar({
+      idUsuario, idPeca, idCorte,
+      tipo: 'E',
+      titulo: 'Retentativa com falha',
+      mensagem:
+        total === 1
+          ? 'O fio não foi cortado na nova tentativa. Verifique a máquina e o fio antes de tentar de novo.'
+          : `Os ${total} fios não foram cortados na nova tentativa. Verifique a máquina e o fio antes de tentar de novo.`,
+    });
+  }
+
+  return notificar({
+    idUsuario, idPeca, idCorte,
+    tipo: 'A',
+    titulo: 'Retentativa não concluída',
+    mensagem: `${concluidos} de ${total} fios foram cortados na nova tentativa. ${
+      falhas === 1 ? '1 falhou de novo' : `${falhas} falharam novamente`
+    }. Confira os detalhes no histórico.`,
+  });
+};
+
+module.exports = { notificar, entregarNotificacao, notificarFimDoLote, notificarFimDaRetentativa };

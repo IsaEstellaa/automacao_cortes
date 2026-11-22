@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { avisar } = require('../services/realtime.service');
-const { notificarFimDoLote } = require('../services/notificar.service');
+const { notificarFimDoLote, notificarFimDaRetentativa } = require('../services/notificar.service');
 
 const MENSAGENS_ERRO = {
   FALHA_MEDICAO: 'Falha na medição',
@@ -198,8 +198,40 @@ const resultado = async (req, res) => {
         );
       }
 
+      // a retentativa terminou?
+      const pend = await client.query(
+        `SELECT COUNT(*) AS pendentes FROM RETENTATIVA
+         WHERE ID_EXECUCAO = $1 AND SITUACAO = 'P'`,
+        [idExecucao]
+      );
+      let resumoRet = null;
+      if (Number(pend.rows[0].pendentes) === 0) {
+        const r = await client.query(
+          `SELECT
+             COUNT(*) FILTER (WHERE SITUACAO = 'C') AS concluidos,
+             COUNT(*) FILTER (WHERE SITUACAO = 'E') AS falhas
+           FROM RETENTATIVA
+           WHERE ID_EXECUCAO = $1
+             AND DATA_CADASTRO = (
+               SELECT DATA_CADASTRO FROM RETENTATIVA WHERE ID_RETENTATIVA = $2
+             )`,
+          [idExecucao, idRet]
+        );
+        resumoRet = r.rows[0];
+      }
+
       await client.query('COMMIT');
       avisar(idUsuario, 'fila');
+
+      if (resumoRet) {
+        notificarFimDaRetentativa({
+          idUsuario,
+          idExecucao,
+          concluidos: Number(resumoRet.concluidos),
+          falhas: Number(resumoRet.falhas),
+        }).catch((e) => console.error('[notificar]', e.message));
+      }
+
       return res.json({ ok: true });
     }
 
