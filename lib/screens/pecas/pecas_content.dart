@@ -64,6 +64,7 @@ class Peca {
       fotos: ((json['fotos'] as List?) ?? [])
         .map((f) => FotoPeca.fromJson(f as Map<String, dynamic>))
         .toList(),
+      favorito: json['favorito'] == true,
       cortes: cortes,
     );
   }
@@ -88,8 +89,7 @@ class _PecasContentState extends State<PecasContent> {
   bool _carregando = true;
   String? _erro;
 
-  //TODO: favoritos ainda não são salvos no backend: ficam guardados só enquanto o app está aberto
-  final Set<int> _favoritosIds = {};
+  final Set<int> _favoritando = {};
 
   @override
   void initState() {
@@ -108,11 +108,9 @@ class _PecasContentState extends State<PecasContent> {
 
     try {
       final resposta = await ApiService.instance.get('/pecas') as List;
-      final lista = resposta.map((j) {
-        final peca = Peca.fromJson(j as Map<String, dynamic>);
-        peca.favorito = _favoritosIds.contains(peca.id);
-        return peca;
-      }).toList();
+      final lista = resposta
+          .map((j) => Peca.fromJson(j as Map<String, dynamic>))
+          .toList();
 
       if (!mounted) return;
       setState(() => _pecas = lista);
@@ -146,15 +144,28 @@ class _PecasContentState extends State<PecasContent> {
     }
   }
 
-  void _alternarFavorito(Peca peca) {
-    setState(() {
-      peca.favorito = !peca.favorito;
-      if (peca.favorito) {
-        _favoritosIds.add(peca.id);
-      } else {
-        _favoritosIds.remove(peca.id);
+  Future<void> _alternarFavorito(Peca peca) async {
+    if (_favoritando.contains(peca.id)) return;
+    _favoritando.add(peca.id);
+
+    final novo = !peca.favorito;
+    setState(() => peca.favorito = novo);
+
+    try {
+      await ApiService.instance.put(
+        '/pecas/${peca.id}/favorito',
+        {'favorito': novo},
+      );
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => peca.favorito = !novo);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.mensagem)),
+        );
       }
-    });
+    } finally {
+      _favoritando.remove(peca.id);
+    }
   }
 
   @override
