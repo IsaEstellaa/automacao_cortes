@@ -203,6 +203,33 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
   // ============================================
   // card da fila de automação
   // ============================================
+
+  // linha de progresso
+  Widget _linhaProgresso(ExecucaoCorte exec) {
+    final comErro = exec.fiosComErro;
+
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(fontSize: 11, color: AppColors.textoPreto),
+        children: [
+          TextSpan(
+            text: comErro == 0
+                ? '(${exec.fiosConcluidos}/${exec.quantidade}) concluídos'
+                : '(${exec.fiosProcessados}/${exec.quantidade}) processados',
+          ),
+          if (comErro > 0)
+            TextSpan(
+              text: ' · $comErro com falha',
+              style: const TextStyle(
+                color: Color.fromARGB(255, 117, 17, 2),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCardFila(ExecucaoCorte exec, bool ativo) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -262,10 +289,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
             ),
             const SizedBox(height: 4),
 
-            Text(
-              '(${exec.fiosConcluidos}/${exec.quantidade}) concluídos',
-              style: TextStyle(fontSize: 11, color: AppColors.textoPreto),
-            ),
+            _linhaProgresso(exec),
             const SizedBox(height: 6),
 
             Text(
@@ -282,10 +306,7 @@ class _AutomacaoContentState extends State<AutomacaoContent> {
             ),
           ] else ...[
             const SizedBox(height: 4),
-            Text(
-              '(${exec.fiosConcluidos}/${exec.quantidade}) concluídos',
-              style: TextStyle(fontSize: 11, color: AppColors.textoPreto),
-            ),
+            _linhaProgresso(exec),
           ],
         ],
       ),

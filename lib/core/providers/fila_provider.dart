@@ -67,9 +67,11 @@ class ExecucaoCorte {
   // cálculos baseados nos fios
   int get fiosConcluidos => fios.where((f) => f.status == 'C').length;
   int get fiosPendentes => fios.where((f) => f.status == 'P').length;
+  int get fiosComErro => fios.where((f) => f.status == 'E').length;
+  int get fiosProcessados => fiosConcluidos + fiosComErro;
   double get metragemCortada => fiosConcluidos * metragem;
   double get metragemRestante => fiosPendentes * metragem;
-  double get progresso => quantidade > 0 ? fiosConcluidos / quantidade : 0;
+  double get progresso => quantidade > 0 ? fiosProcessados / quantidade : 0;
 }
 
 // cortes da mesma peça enviados juntos
