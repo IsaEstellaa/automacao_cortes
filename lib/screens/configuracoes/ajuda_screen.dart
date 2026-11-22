@@ -23,9 +23,9 @@ const _perguntasFrequentes = [
   ),
   _ItemAjuda(
     'Como envio cortes para a máquina?',
-    'Na aba "Automação", toque em "Novo corte", escolha o material e os cortes da peça '
-        'e confirme. Os cortes entram na fila e a máquina os executa na ordem em que '
-        'foram enviados.',
+    'Na aba "Automação" (ou na tela inicial), toque em "Novo corte", escolha a peça, '
+        'o material e os cortes e confirme. Os cortes entram na fila e a máquina os '
+        'executa na ordem em que foram enviados.',
   ),
   _ItemAjuda(
     'Por que não consigo enviar um novo corte?',
@@ -35,20 +35,20 @@ const _perguntasFrequentes = [
   ),
   _ItemAjuda(
     'O que significa um fio com erro?',
-    'Quando a máquina não consegue cortar um fio, ele fica marcado com erro, e a peça '
-        'aparece com um ícone de alerta no histórico. Toque no alerta para ver o que '
-        'aconteceu com cada fio.',
+    'Quando a máquina não consegue cortar um fio, ele fica marcado com erro, e o envio '
+        'aparece com um ícone de alerta no histórico. Abra o item e toque no alerta ao '
+        'lado do corte para ver o que aconteceu com cada fio.',
   ),
   _ItemAjuda(
     'Como funciona a retentativa?',
-    'No alerta do histórico, toque em "Retentar fios com erro". Só os fios com erro são '
-        'cortados de novo, e a retentativa aparece na fila até terminar. Ela só pode ser '
-        'feita com a máquina livre.',
+    'Abra o item no histórico, toque no alerta ao lado do corte e depois em "Retentar '
+        'fios com erro". Só os fios com erro são cortados de novo, e a retentativa '
+        'aparece na fila até terminar. Ela só pode ser feita com a máquina livre.',
   ),
   _ItemAjuda(
     'O que aparece no histórico?',
-    'Os cortes já finalizados, agrupados por peça. Toque no nome da peça para ver '
-        'cada corte feito.',
+    'Os cortes já finalizados, agrupados por envio: cada pedido aparece com o nome da '
+        'peça e o horário, separado por dia. Toque no item para ver os cortes feitos.',
   ),
   _ItemAjuda(
     'Posso editar um corte ou um material?',
@@ -61,16 +61,57 @@ const _perguntasFrequentes = [
   ),
 ];
 
+const _sobreMaquina = [
+  _ItemAjuda(
+    'Como cadastro minha máquina?',
+    'Em "Configurações", toque em "Minha máquina" (ou, na tela inicial, em '
+        '"Cadastrar máquina"). Dê um nome e confirme. O app vai mostrar a chave da '
+        'máquina: informe essa chave na configuração dela para que ela se conecte à '
+        'sua conta.',
+  ),
+  _ItemAjuda(
+    'O que é a chave da máquina?',
+    'É o código secreto que identifica a sua máquina. Ela aparece uma única vez, na '
+        'hora do cadastro, e não dá para ver de novo, porque o app guarda apenas uma '
+        'versão protegida dela. Copie a chave, guarde em lugar seguro e não compartilhe.',
+  ),
+  _ItemAjuda(
+    'Perdi a chave. E agora?',
+    'Em "Minha máquina", toque em "Gerar nova chave". A chave antiga deixa de '
+        'funcionar, então você precisa colocar a nova na máquina. Enquanto isso, ela '
+        'aparece como "não encontrada".',
+  ),
+  _ItemAjuda(
+    'Posso ter mais de uma máquina?',
+    'Por enquanto, uma por conta. Para cadastrar outra, remova a atual em "Minha '
+        'máquina". Lá também dá para renomear a máquina, no lápis ao lado do nome.',
+  ),
+  _ItemAjuda(
+    'O que significa o status da máquina na tela inicial?',
+    '"Aguardando um novo corte": a máquina está conectada e livre. "Em processo de '
+        'corte": ela está executando um lote. "Não foi encontrada": o app ficou mais '
+        'de 15 segundos sem contato com ela. "Máquina não cadastrada": você ainda não '
+        'cadastrou nenhuma.',
+  ),
+];
+
 const _problemas = [
   _ItemAjuda(
     'Sem conexão com o servidor',
     'Verifique a sua internet. Se estiver tudo certo, o servidor pode estar fora do ar: '
-        'tente de novo em alguns minutos.',
+        'tente de novo em alguns minutos. Se o app ficou um tempo sem uso, a primeira '
+        'resposta pode demorar cerca de um minuto.',
   ),
   _ItemAjuda(
     'A fila não anda',
     'Confira se a máquina está ligada, com fio carregado e conectada à internet. Depois, '
         'puxe a tela da Automação para baixo para atualizar.',
+  ),
+  _ItemAjuda(
+    'A máquina aparece como "não encontrada"',
+    'Confira se ela está ligada e com internet. Se você gerou uma nova chave ou '
+        'removeu e cadastrou a máquina de novo, a chave que está nela precisa ser a '
+        'nova. A conexão pode levar alguns segundos para voltar.',
   ),
   _ItemAjuda(
     'Um fio travou ou deu erro',
@@ -126,6 +167,10 @@ class _AjudaScreenState extends State<AjudaScreen> {
 
             _buildTituloSecao('Perguntas frequentes'),
             ..._perguntasFrequentes.map(_buildItemExpansivel),
+            const SizedBox(height: 14),
+
+            _buildTituloSecao('Sobre a máquina'),
+            ..._sobreMaquina.map(_buildItemExpansivel),
             const SizedBox(height: 14),
 
             _buildTituloSecao('Entendendo os status'),
