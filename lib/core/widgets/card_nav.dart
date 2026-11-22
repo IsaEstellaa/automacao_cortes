@@ -113,6 +113,6 @@ class CardNav extends StatelessWidget {
       return SvgPicture.asset(svgPath!, width: 80, height: 80,
           colorFilter: ColorFilter.mode(AppColors.green, BlendMode.srcIn));
     }
-    return Icon(icone, size: 80, color: AppColors.green);
+    return Icon(icone, size: 65, color: AppColors.green);
   }
 }

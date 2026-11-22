@@ -40,7 +40,6 @@ const cadastrar = async (req, res) => {
     }
 
     // criptografa a senha
-    // TODO: Talvez, utilizar uma função de hash mais forte
     const senhaCriptografada = await bcrypt.hash(senha, 10);
 
     // insere o usuário

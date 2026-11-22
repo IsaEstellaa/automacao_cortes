@@ -175,27 +175,27 @@ class _MinhaMaquinaScreenState extends State<MinhaMaquinaScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  // Expanded(
-                  //   child: OutlinedButton.icon(
-                  //     onPressed: () async {
-                  //       await Clipboard.setData(ClipboardData(text: chave));
-                  //       if (ctx.mounted) {
-                  //         ScaffoldMessenger.of(ctx).showSnackBar(
-                  //           const SnackBar(content: Text('Chave copiada')),
-                  //         );
-                  //       }
-                  //     },
-                  //     icon: Icon(Icons.copy, size: 18, color: AppColors.green),
-                  //     label: Text(
-                  //       'Copiar',
-                  //       style: TextStyle(color: AppColors.green),
-                  //     ),
-                  //     style: OutlinedButton.styleFrom(
-                  //       side: BorderSide(color: AppColors.green),
-                  //     ),
-                  //   ),
-                  // ),
-                  // const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: chave));
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Chave copiada')),
+                          );
+                        }
+                      },
+                      icon: Icon(Icons.copy, size: 18, color: AppColors.green),
+                      label: Text(
+                        'Copiar',
+                        style: TextStyle(color: AppColors.green),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppColors.green),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: SizedBox(
                       width: double.infinity,

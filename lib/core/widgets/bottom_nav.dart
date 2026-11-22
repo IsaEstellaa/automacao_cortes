@@ -26,7 +26,6 @@ class AppBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // TODO: adicionar os icones corretos
               _buildItem(0, 'assets/icons/tesoura.svg'),
               _buildItem(1, 'assets/icons/macrame.png', isPng: true),
               _buildItem(2, 'assets/icons/home.svg'),

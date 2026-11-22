@@ -42,7 +42,7 @@ class PecaCard extends StatelessWidget {
               ),
               child: SizedBox(
                 width: double.infinity,
-                height: 60,
+                height: 56,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -55,94 +55,127 @@ class PecaCard extends StatelessWidget {
                     ),
                     Container(color: AppColors.fundoFitaRosa.withOpacity(0.20)),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              peca.nome,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textoPreto,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Center(
+                        child: Text(
+                          peca.nome,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textoPreto,
+                            height: 1.2,
                           ),
-
-                          // estrela de favorito
-                          GestureDetector(
-                            onTap: aoFavoritar,
-                            child: Icon(
-                              peca.favorito ? Icons.star : Icons.star_border,
-                              color: peca.favorito ? const Color.fromARGB(255, 148, 112, 6) : AppColors.green.withOpacity(0.5),
-                              size: 22,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            
-            Container(
-              height: 6,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.10),
-                    blurRadius: 5,
-                    offset: Offset(0, -1),
-                  ),
-                ],
-              ),
-            ),
 
             // capa da peça: a primeira foto
             Expanded(
-              child: peca.fotos.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Center(
-                        child: Icon(
-                          Icons.checkroom_outlined, // TODO: substituir pelo SVG da peça
-                          size: 64,
-                          color: AppColors.green,
-                        ),
-                      ),
-                    )
-                  : SizedBox.expand(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(9),
-                          bottomRight: Radius.circular(39),
-                        ),
-                        child: Image.network(
-                          peca.fotos.first.url,
-                          fit: BoxFit.cover,
-                          cacheWidth: 500,
-                          errorBuilder: (_, __, ___) => Center(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  peca.fotos.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Center(
                             child: Icon(
-                              Icons.checkroom_outlined,
+                              Icons.checkroom_outlined, // TODO: substituir pelo SVG da peça
                               size: 64,
                               color: AppColors.green,
                             ),
                           ),
-                          loadingBuilder: (_, filho, progresso) => progresso == null
-                              ? filho
-                              : Center(
-                                  child: Icon(
-                                    Icons.checkroom_outlined,
-                                    size: 64,
-                                    color: AppColors.green.withOpacity(0.3),
-                                  ),
+                        )
+                      : SizedBox.expand(
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(9),
+                              bottomRight: Radius.circular(39),
+                            ),
+                            child: Image.network(
+                              peca.fotos.first.url,
+                              fit: BoxFit.cover,
+                              cacheWidth: 500,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Icon(
+                                  Icons.checkroom_outlined,
+                                  size: 64,
+                                  color: AppColors.green,
                                 ),
+                              ),
+                              loadingBuilder: (_, filho, progresso) => progresso == null
+                                  ? filho
+                                  : Center(
+                                      child: Icon(
+                                        Icons.checkroom_outlined,
+                                        size: 64,
+                                        color: AppColors.green.withOpacity(0.3),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+
+                  // sombrinha suave embaixo do nome
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 8,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.12),
+                              Colors.black.withOpacity(0),
+                            ],
+                          ),
                         ),
                       ),
                     ),
+                  ),
+
+                  // estrela de favorito sobre a foto
+                  Positioned(
+                    bottom: 5,
+                    left: 5,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: aoFavoritar,
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.80),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.12),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          peca.favorito ? Icons.star : Icons.star_border,
+                          size: 20,
+                          color: peca.favorito
+                              ? const Color.fromARGB(255, 148, 112, 6)
+                              : AppColors.green.withOpacity(0.7),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

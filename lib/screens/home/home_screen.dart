@@ -117,7 +117,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case 1:
         return _buildPaginaComTitulo('Suas peças', const PecasContent());
       case 2:
-        return const HomeContent();
+        return HomeContent(
+          aoIrParaAba: (indice) => setState(() => _indiceSelecionado = indice),
+        );
       case 3:
         return _buildPaginaComTitulo('Notificações', const NotificacoesContent());
       case 4:

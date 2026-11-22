@@ -10,9 +10,12 @@ import '../corte/novo_corte_screen.dart';
 import '../materiais/materiais_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/status_maquina_provider.dart';
+import '../pecas/nova_peca_screen.dart';
 
 class HomeContent extends StatefulWidget {
-  const HomeContent({super.key});
+  final ValueChanged<int> aoIrParaAba;
+
+  const HomeContent({super.key, required this.aoIrParaAba});
 
   @override
   State<HomeContent> createState() => _HomeContentState();
@@ -239,8 +242,7 @@ class _HomeContentState extends State<HomeContent> {
             Expanded(child: 
             CardNav(
               titulo: 'Materiais',
-              svgPath: 'assets/icons/materiais.png',
-              isPng: true,
+              icone: Icons.inventory_2_outlined,
               aoTocar: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const MateriaisScreen()),
@@ -250,9 +252,8 @@ class _HomeContentState extends State<HomeContent> {
             Expanded(child:
             CardNav(
               titulo: 'Histórico',
-              svgPath: 'assets/icons/historico.png',
-              isPng: true,
-              aoTocar: () { /* navegar */ },
+              icone: Icons.history,
+              aoTocar: () => widget.aoIrParaAba(0),
             )),
           ],
         ),
@@ -263,20 +264,18 @@ class _HomeContentState extends State<HomeContent> {
             Expanded(child: 
             CardNav(
               titulo: 'Nova peça',
-              svgPath: 'assets/icons/peca.png',
-              isPng: true,
-              aoTocar: () { /* navegar */ },
+              icone: Icons.checkroom_outlined,
+              aoTocar: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NovaPecaScreen()),
+              ),
             )),
             const SizedBox(width: 16),
             Expanded(child:
             CardNav(
-              titulo: 'Materiais',
-              svgPath: 'assets/icons/materiais.png',
-              isPng: true,
-              aoTocar: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MateriaisScreen()),
-              ),
+              titulo: 'Minha máquina',
+              icone: Icons.precision_manufacturing_outlined,
+              aoTocar: _abrirMinhaMaquina,
             )),
           ],
         ),
