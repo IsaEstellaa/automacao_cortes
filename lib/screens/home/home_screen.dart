@@ -142,7 +142,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: TituloBanner(titulo: titulo),
         ),
-        Expanded(child: conteudo),
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              conteudo,
+              //sombra
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 10,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.10),
+                          Colors.black.withOpacity(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
