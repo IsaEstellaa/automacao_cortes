@@ -28,6 +28,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _indiceSelecionado = 2;
+  final Map<String, int> _ultimaSeq = {};
 
   StreamSubscription<RemoteMessage>? _assinaturaPush;
 
@@ -53,8 +54,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     TempoReal.instance.notificacoes.addListener(_aoAvisoNotificacoes);
     TempoReal.instance.conectar();
 
-    _assinaturaPush =
-        FirebaseMessaging.onMessage.listen((_) => _atualizarTudo());
+    _assinaturaPush = FirebaseMessaging.onMessage.listen(_aoReceberPush);
 
     NotificacaoLocal.instance.abrirNotificacoes.addListener(_abrirAbaNotificacoes);
     NotificacaoLocal.instance.iniciar();
@@ -88,6 +88,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _aoAvisoFila() {
     if (!mounted) return;
     context.read<FilaProvider>().carregar();
+  }
+
+  void _aoReceberPush(RemoteMessage msg) {
+    final evento = msg.data['aviso'];
+    if (evento == null) {
+      _atualizarTudo();
+      return;
+    }
+
+    final seq = int.tryParse(msg.data['seq'] ?? '') ?? 0;
+    // aviso atrasado
+    if (seq < (_ultimaSeq[evento] ?? 0)) return;
+    _ultimaSeq[evento] = seq;
+
+    switch (evento) {
+      case 'fila':
+        _aoAvisoFila();
+        break;
+      case 'status':
+        _aoAvisoStatus();
+        break;
+      case 'notificacoes':
+        _aoAvisoNotificacoes();
+        break;
+    }
   }
 
   void _atualizarTudo() {

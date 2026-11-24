@@ -3,12 +3,15 @@ import '../services/api_service.dart';
 
 class NotificacoesProvider extends ChangeNotifier {
   int _naoVistas = 0;
+  int _busca = 0;
   int get naoVistas => _naoVistas;
 
   Future<void> atualizar() async {
+    final minhaBusca = ++_busca;
     try {
       final resposta = await ApiService.instance.get('/notificacoes/contagem')
           as Map<String, dynamic>;
+      if (minhaBusca != _busca) return;
       final total = resposta['nao_visualizadas'] as int;
 
       if (total != _naoVistas) {
@@ -21,6 +24,7 @@ class NotificacoesProvider extends ChangeNotifier {
   }
 
   void diminuir() {
+    _busca++;
     if (_naoVistas > 0) {
       _naoVistas--;
       notifyListeners();
@@ -28,6 +32,7 @@ class NotificacoesProvider extends ChangeNotifier {
   }
 
   void zerar() {
+    _busca++;
     if (_naoVistas != 0) {
       _naoVistas = 0;
       notifyListeners();

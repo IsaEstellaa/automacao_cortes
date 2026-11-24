@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const { notificar } = require('./notificar.service');
+const { enviarAviso } = require('./push.service');
 
 let io = null;
 
@@ -11,8 +12,9 @@ const maquinas = new Map();
 const salaDoUsuario = (idUsuario) => `usuario:${idUsuario}`;
 
 const avisar = (idUsuario, evento) => {
-  if (!io || !idUsuario) return;
-  io.to(salaDoUsuario(idUsuario)).emit(evento);
+  if (!idUsuario) return;
+  if (io) io.to(salaDoUsuario(idUsuario)).emit(evento); // temporário
+  enviarAviso(idUsuario, evento).catch(() => {});
 };
 
 const registrarContato = (idMaquina, idUsuario) => {

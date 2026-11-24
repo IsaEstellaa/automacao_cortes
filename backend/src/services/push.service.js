@@ -75,4 +75,47 @@ async function enviarPush(idUsuario, { titulo, corpo, dados = {} }) {
   }
 }
 
-module.exports = { iniciar, enviarPush };
+// aviso silencioso
+async function enviarAviso(idUsuario, evento) {
+  const seq = String(Date.now());
+
+  if (!iniciar()) return;
+
+  try {
+    const { rows } = await pool.query(
+      'SELECT TOKEN_FCM FROM DISPOSITIVO WHERE ID_USUARIO = $1',
+      [idUsuario]
+    );
+    const tokens = rows.map((r) => r.token_fcm);
+    if (tokens.length === 0) return;
+
+    const resposta = await getMessaging().sendEachForMulticast({
+      tokens,
+      data: { aviso: evento, seq },
+      android: { priority: 'high' },
+    });
+
+    const invalidos = [];
+    resposta.responses.forEach((r, i) => {
+      if (r.success) return;
+      const codigo = r.error && r.error.code;
+      if (
+        codigo === 'messaging/registration-token-not-registered' ||
+        codigo === 'messaging/invalid-registration-token'
+      ) {
+        invalidos.push(tokens[i]);
+      }
+    });
+
+    if (invalidos.length > 0) {
+      await pool.query(
+        'DELETE FROM DISPOSITIVO WHERE TOKEN_FCM = ANY($1)',
+        [invalidos]
+      );
+    }
+  } catch (erro) {
+    console.error('[push] erro no aviso:', erro.message);
+  }
+}
+
+module.exports = { iniciar, enviarPush, enviarAviso };
