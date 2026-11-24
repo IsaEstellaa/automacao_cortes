@@ -15,7 +15,6 @@ import '../configuracoes/configuracoes_content.dart';
 import '../automacao/automacao_content.dart';
 import '../pecas/pecas_content.dart';
 import 'home_content.dart';
-import '../../core/services/tempo_real.dart';
 import '../../core/services/push_service.dart';
 import '../../core/services/notificacao_local.dart';
 
@@ -44,15 +43,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final statusMaquina = context.read<StatusMaquinaProvider>();
     statusMaquina.reiniciar();
     statusMaquina.carregar();
-    TempoReal.instance.status.addListener(_aoAvisoStatus);
 
     final fila = context.read<FilaProvider>();
     fila.reiniciar();
     fila.carregar();
-    TempoReal.instance.fila.addListener(_aoAvisoFila);
-
-    TempoReal.instance.notificacoes.addListener(_aoAvisoNotificacoes);
-    TempoReal.instance.conectar();
 
     _assinaturaPush = FirebaseMessaging.onMessage.listen(_aoReceberPush);
 
@@ -66,11 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _assinaturaPush?.cancel();
 
-    TempoReal.instance.notificacoes.removeListener(_aoAvisoNotificacoes);
-    TempoReal.instance.status.removeListener(_aoAvisoStatus);
-    TempoReal.instance.fila.removeListener(_aoAvisoFila);
     NotificacaoLocal.instance.abrirNotificacoes.removeListener(_abrirAbaNotificacoes);
-    TempoReal.instance.desconectar();
 
     super.dispose();
   }
